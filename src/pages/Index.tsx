@@ -15,6 +15,19 @@ const Index = () => {
   const [text, setText] = useState('');
   const { toast } = useToast();
 
+  const createNode = useCallback((text: string, type: string, position?: { x: number, y: number }) => {
+    const newNode: Node = {
+      id: `node-${nodes.length + 1}`,
+      type: 'historical',
+      data: { label: text, type },
+      position: position || { 
+        x: Math.random() * 500, 
+        y: Math.random() * 300 
+      },
+    };
+    setNodes((nds) => [...nds, newNode]);
+  }, [nodes]);
+
   const generateSummary = useCallback(async (text: string) => {
     if (!text.trim()) return;
 
@@ -24,7 +37,25 @@ const Index = () => {
       });
 
       if (error) throw error;
+      
       setSummary(data.summary);
+
+      // Clear existing nodes before adding new ones
+      setNodes([]);
+      setEdges([]);
+
+      // Create nodes from relationships
+      if (data.relationships && Array.isArray(data.relationships)) {
+        data.relationships.forEach((rel: { text: string, type: string }, index: number) => {
+          // Calculate position in a circular layout
+          const angle = (2 * Math.PI * index) / data.relationships.length;
+          const radius = 200;
+          const x = 250 + radius * Math.cos(angle);
+          const y = 150 + radius * Math.sin(angle);
+          
+          createNode(rel.text, rel.type, { x, y });
+        });
+      }
     } catch (error) {
       console.error('Error generating summary:', error);
       toast({
@@ -33,17 +64,7 @@ const Index = () => {
         variant: "destructive",
       });
     }
-  }, [toast]);
-
-  const createNode = useCallback((text: string, type: string) => {
-    const newNode: Node = {
-      id: `node-${nodes.length + 1}`,
-      type: 'historical',
-      data: { label: text, type },
-      position: { x: Math.random() * 500, y: Math.random() * 300 },
-    };
-    setNodes((nds) => [...nds, newNode]);
-  }, [nodes]);
+  }, [toast, createNode]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -64,18 +85,19 @@ const Index = () => {
               }}
             />
             <div className="bg-white rounded-lg shadow-sm p-4">
-              <h2 className="text-xl font-semibold mb-4">Analysis Summary</h2>
+              <h2 className="text-xl font-semibold mb-4">تحليل الملخص</h2>
               <Textarea
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
-                placeholder="The summary will be generated automatically as you type..."
-                className="min-h-[150px]"
+                placeholder="سيتم إنشاء الملخص تلقائياً أثناء الكتابة..."
+                className="min-h-[150px] text-right"
+                dir="rtl"
               />
             </div>
           </div>
 
           <div className="bg-white rounded-lg shadow-sm p-4">
-            <h2 className="text-xl font-semibold mb-4">Relationship Diagram</h2>
+            <h2 className="text-xl font-semibold mb-4">مخطط العلاقات</h2>
             <FlowCanvas initialNodes={nodes} initialEdges={edges} />
           </div>
         </div>

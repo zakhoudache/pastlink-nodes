@@ -19,16 +19,35 @@ serve(async (req) => {
     const { text } = await req.json();
 
     const prompt = `
-      Analyze the following historical text and provide a comprehensive summary that:
-      1. Identifies key events, people, and concepts
-      2. Explains relationships between different elements
-      3. Highlights the main causes and effects
-      4. Discusses political, economic, social, and cultural factors
+      Please analyze the following historical text and provide a comprehensive summary in Arabic that:
+      1. يحدد الأحداث والشخصيات والمفاهيم الرئيسية
+      2. يشرح العلاقات بين العناصر المختلفة
+      3. يسلط الضوء على الأسباب والنتائج الرئيسية
+      4. يناقش العوامل السياسية والاقتصادية والاجتماعية والثقافية
+      
+      Also, identify key relationships between elements in the text and classify them as one of these types:
+      - event
+      - person
+      - cause
+      - political
+      - economic
+      - social
+      - cultural
+      
+      Format the relationships part in JSON like this:
+      {
+        "relationships": [
+          {
+            "text": "text of the element",
+            "type": "one of the types above"
+          }
+        ]
+      }
       
       Text to analyze:
       ${text}
       
-      Please provide a well-structured summary in 3-4 paragraphs.
+      First provide the Arabic summary, then on a new line start with "RELATIONSHIPS_JSON:" followed by the JSON.
     `;
 
     const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
@@ -46,10 +65,21 @@ serve(async (req) => {
     });
 
     const data = await response.json();
-    console.log('Gemini API response:', data); // Added for debugging
-    const summary = data.candidates[0].content.parts[0].text;
+    console.log('Gemini API response:', data);
+    const fullText = data.candidates[0].content.parts[0].text;
+    
+    // Split the response into summary and relationships
+    const [summary, relationshipsJson] = fullText.split('RELATIONSHIPS_JSON:');
+    let relationships = [];
+    try {
+      if (relationshipsJson) {
+        relationships = JSON.parse(relationshipsJson.trim()).relationships;
+      }
+    } catch (e) {
+      console.error('Error parsing relationships JSON:', e);
+    }
 
-    return new Response(JSON.stringify({ summary }), {
+    return new Response(JSON.stringify({ summary: summary.trim(), relationships }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
