@@ -1,16 +1,17 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
 interface TextEditorProps {
   onCreateNode: (text: string, type: string) => void;
+  text: string;
+  onTextChange: (text: string) => void;
 }
 
-export default function TextEditor({ onCreateNode }: TextEditorProps) {
-  const [text, setText] = useState('');
-  const [selectedText, setSelectedText] = useState('');
+export default function TextEditor({ onCreateNode, text, onTextChange }: TextEditorProps) {
+  const [selectedText, setSelectedText] = React.useState('');
   const { toast } = useToast();
 
   const handleTextSelection = () => {
@@ -37,7 +38,7 @@ export default function TextEditor({ onCreateNode }: TextEditorProps) {
     <div className="flex flex-col gap-4 p-4 bg-white rounded-lg shadow-sm animate-fade-in">
       <Textarea
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => onTextChange(e.target.value)}
         onMouseUp={handleTextSelection}
         placeholder="Enter your historical text here..."
         className="min-h-[200px] p-4 text-sm"

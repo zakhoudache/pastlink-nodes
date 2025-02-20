@@ -1,15 +1,39 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Node, Edge } from '@xyflow/react';
 import TextEditor from '@/components/TextAnalysis/TextEditor';
 import FlowCanvas from '@/components/TextAnalysis/FlowCanvas';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [summary, setSummary] = useState('');
+  const [text, setText] = useState('');
+  const { toast } = useToast();
+
+  const generateSummary = useCallback(async (text: string) => {
+    if (!text.trim()) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-summary', {
+        body: { text },
+      });
+
+      if (error) throw error;
+      setSummary(data.summary);
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      toast({
+        title: "Error generating summary",
+        description: "Please try again later",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
 
   const createNode = useCallback((text: string, type: string) => {
     const newNode: Node = {
@@ -31,13 +55,20 @@ const Index = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-8">
-            <TextEditor onCreateNode={createNode} />
+            <TextEditor 
+              onCreateNode={createNode} 
+              text={text}
+              onTextChange={(newText) => {
+                setText(newText);
+                generateSummary(newText);
+              }}
+            />
             <div className="bg-white rounded-lg shadow-sm p-4">
               <h2 className="text-xl font-semibold mb-4">Analysis Summary</h2>
               <Textarea
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
-                placeholder="Write your analysis summary here..."
+                placeholder="The summary will be generated automatically as you type..."
                 className="min-h-[150px]"
               />
             </div>
