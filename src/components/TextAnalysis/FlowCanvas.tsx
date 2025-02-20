@@ -47,9 +47,20 @@ export default function FlowCanvas({ initialNodes = [], initialEdges = [] }: Flo
       >
         <Background />
         <Controls />
-        <MiniMap nodeColor={(node) => {
-          return node.type === 'historical' ? '#E9D5FF' : '#eee';
-        }} />
+        <MiniMap 
+          nodeColor={(node) => {
+            const colors = {
+              event: '#E9D5FF',
+              person: '#DBEAFE',
+              cause: '#FEE2E2',
+              political: '#D1FAE5',
+              economic: '#FEF3C7',
+              social: '#FFEDD5',
+              cultural: '#FCE7F3'
+            };
+            return colors[node.data?.type as keyof typeof colors] || '#f1f1f1';
+          }}
+        />
       </ReactFlow>
     </div>
   );
