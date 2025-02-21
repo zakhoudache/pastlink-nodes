@@ -3,19 +3,8 @@
 
 import { useCallback, useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'; // Consider using a more specific path
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'; // Consider using a more specific path
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useHighlightStore } from '../utils/highlightStore';
 import '@xyflow/react/dist/style.css';
 import {
@@ -40,15 +29,9 @@ import { jsPDF } from 'jspdf';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download, ZoomIn } from 'lucide-react';
-import HistoricalNode, {
-  NodeType,
-  HistoricalNodeData,
-} from '../components/HistoricalNode';
-import {
-  HistoricalEdge,
-  HistoricalEdgeData,
-} from '../components/HistoricalEdge';
-import { EdgeDialog } from './EdgeDialog'; // Make sure this path is correct!
+import HistoricalNode, { NodeType, HistoricalNodeData } from '../components/HistoricalNode';
+import { HistoricalEdge, HistoricalEdgeData } from '../components/HistoricalEdge';
+import { EdgeDialog } from './EdgeDialog';  // Import it here
 
 const edgeTypes: EdgeTypes = {
   historical: HistoricalEdge,
@@ -70,14 +53,6 @@ const nodeTypes = {
 const initialNodes: Node<HistoricalNodeData>[] = [];
 const initialEdges: Edge<HistoricalEdgeData>[] = [];
 
-const relationshipTypes = [
-  'Caused by',
-  'Led to',
-  'Influenced',
-  'Part of',
-  'Opposed to',
-  'Related to',
-];
 
 const getNodePosition = (nodes: Node[]): { x: number; y: number } => {
   if (nodes.length === 0) return { x: 100, y: 100 };
@@ -90,9 +65,7 @@ const getNodePosition = (nodes: Node[]): { x: number; y: number } => {
 };
 
 // Custom function to calculate the bounding rectangle of nodes
-const getNodesBounds = (
-  nodes: Node[]
-): { x: number; y: number; width: number; height: number } => {
+const getNodesBounds = (nodes: Node[]): { x: number; y: number; width: number; height: number } => {
   if (nodes.length === 0) {
     return { x: 0, y: 0, width: 0, height: 0 };
   }
@@ -141,10 +114,7 @@ export default function Flow() {
 
   useEffect(() => {
     const handleNodeUpdate = (event: Event) => {
-      const customEvent = event as CustomEvent<{
-        id: string;
-        data: HistoricalNodeData;
-      }>;
+      const customEvent = event as CustomEvent<{ id: string; data: HistoricalNodeData }>;
       const { id, data } = customEvent.detail;
       setNodes((nds) =>
         nds.map((node) => (node.id === id ? { ...node, data } : node))
@@ -171,12 +141,7 @@ export default function Flow() {
   const downloadAsPDF = useCallback(() => {
     if (nodes.length === 0) return;
     const nodesBounds = getNodesBounds(nodes);
-    const { x, y, zoom } = getViewportForBounds(
-      nodesBounds,
-      nodesBounds.width,
-      nodesBounds.height,
-      0.5
-    );
+    const { x, y, zoom } = getViewportForBounds(nodesBounds, nodesBounds.width, nodesBounds.height, 0.5);
     const flowElement = document.querySelector('.react-flow') as HTMLElement | null;
     if (!flowElement) return;
 
@@ -184,7 +149,7 @@ export default function Flow() {
       backgroundColor: '#ffffff',
       width: nodesBounds.width,
       height: nodesBounds.height,
-      style: { transform: `translate(${x}px, ${y}px) scale(${zoom})`,}, //added style tag
+      style: { transform: `translate(${x}px, ${y}px) scale(${zoom})` },
     }).then((dataUrl) => {
       const pdf = new jsPDF({
         orientation: 'landscape',
@@ -296,8 +261,7 @@ export default function Flow() {
             <h3 className="font-semibold">Highlighted Passages</h3>
             {highlights.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No highlights available. Select text in the Analysis page to
-                create nodes.
+                No highlights available. Select text in the Analysis page to create nodes.
               </p>
             ) : (
               <div className="space-y-3">
@@ -310,9 +274,7 @@ export default function Flow() {
                           size="sm"
                           variant="outline"
                           className="bg-blue-50 hover:bg-blue-100"
-                          onClick={() =>
-                            createNodeFromHighlight(highlight, 'event')
-                          }
+                          onClick={() => createNodeFromHighlight(highlight, 'event')}
                         >
                           Event
                         </Button>
@@ -320,9 +282,7 @@ export default function Flow() {
                           size="sm"
                           variant="outline"
                           className="bg-green-50 hover:bg-green-100"
-                          onClick={() =>
-                            createNodeFromHighlight(highlight, 'person')
-                          }
+                          onClick={() => createNodeFromHighlight(highlight, 'person')}
                         >
                           Person
                         </Button>
@@ -330,9 +290,7 @@ export default function Flow() {
                           size="sm"
                           variant="outline"
                           className="bg-red-50 hover:bg-red-100"
-                          onClick={() =>
-                            createNodeFromHighlight(highlight, 'cause')
-                          }
+                          onClick={() => createNodeFromHighlight(highlight, 'cause')}
                         >
                           Cause
                         </Button>
@@ -342,9 +300,7 @@ export default function Flow() {
                           size="sm"
                           variant="outline"
                           className="bg-purple-50 hover:bg-purple-100"
-                          onClick={() =>
-                            createNodeFromHighlight(highlight, 'political')
-                          }
+                          onClick={() => createNodeFromHighlight(highlight, 'political')}
                         >
                           Political
                         </Button>
@@ -352,9 +308,7 @@ export default function Flow() {
                           size="sm"
                           variant="outline"
                           className="bg-yellow-50 hover:bg-yellow-100"
-                          onClick={() =>
-                            createNodeFromHighlight(highlight, 'economic')
-                          }
+                          onClick={() => createNodeFromHighlight(highlight, 'economic')}
                         >
                           Economic
                         </Button>
@@ -362,9 +316,7 @@ export default function Flow() {
                           size="sm"
                           variant="outline"
                           className="bg-pink-50 hover:bg-pink-100"
-                          onClick={() =>
-                            createNodeFromHighlight(highlight, 'social')
-                          }
+                          onClick={() => createNodeFromHighlight(highlight, 'social')}
                         >
                           Social
                         </Button>
@@ -372,9 +324,7 @@ export default function Flow() {
                           size="sm"
                           variant="outline"
                           className="bg-indigo-50 hover:bg-indigo-100"
-                          onClick={() =>
-                            createNodeFromHighlight(highlight, 'cultural')
-                          }
+                          onClick={() => createNodeFromHighlight(highlight, 'cultural')}
                         >
                           Cultural
                         </Button>
