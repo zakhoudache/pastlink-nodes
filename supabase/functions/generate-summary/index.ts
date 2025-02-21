@@ -19,21 +19,21 @@ serve(async (req) => {
   try {
     const { text } = await req.json();
 
-    // The prompt now instructs the API to output a plain text summary in Arabic,
-    // followed by a list of relationships in plain text.
+    // يتم الآن إرسال تعليمات إلى API لإخراج ملخص نصي باللغة العربية،
+    // يتبعه قائمة بالعلاقات بصيغة نصية عادية.
     const prompt = `
-Please analyze the following historical text and provide a comprehensive summary in Arabic.
-The summary should identify key events, characters, and concepts, explain the relationships between elements,
-and highlight major causes and effects including political, economic, social, and cultural factors.
+يرجى تحليل النص التاريخي التالي وتقديم ملخص شامل باللغة العربية.
+يجب أن يتضمن الملخص الأحداث الرئيسية، الشخصيات، والمفاهيم، مع شرح للعلاقات بين العناصر،
+وتسليط الضوء على الأسباب والنتائج الرئيسية بما يشمل العوامل السياسية والاقتصادية والاجتماعية والثقافية.
 
-After the summary, on a new line, output a relationships section using the following format:
+بعد الانتهاء من الملخص، في سطر جديد، قم بإدراج قسم العلاقات باستخدام التنسيق التالي:
 
 RELATIONSHIPS:
-- [source entity] -> [target entity] | [relationship type]
+- [الكيان المصدر] -> [الكيان الهدف] | [نوع العلاقة]
 
-Do not use any JSON formatting in your output; only use plain text.
+لا تستخدم أي تنسيق JSON في إخراجك؛ فقط استخدم النص العادي.
 
-Text to analyze:
+النص لتحليله:
 ${text}
 `;
 
@@ -53,8 +53,8 @@ ${text}
     console.log("Gemini API response:", data);
     const fullText = data.candidates[0].content.parts[0].text;
 
-    // We assume the response starts with the Arabic summary,
-    // then later contains the marker "RELATIONSHIPS:" followed by relationship details.
+    // نفترض أن الاستجابة تبدأ بالملخص باللغة العربية،
+    // تليه لاحقاً العلامة "RELATIONSHIPS:" متبوعة بتفاصيل العلاقات.
     const marker = "RELATIONSHIPS:";
     const markerIndex = fullText.indexOf(marker);
     let summary: string, relationships: string;
@@ -63,10 +63,10 @@ ${text}
       relationships = fullText.substring(markerIndex).trim();
     } else {
       summary = fullText.trim();
-      relationships = "No relationships information provided.";
+      relationships = "لم يتم تقديم معلومات عن العلاقات.";
     }
 
-    // Combine the summary and relationships into one plain text output.
+    // دمج الملخص والعلاقات في إخراج نصي واحد.
     const output = `SUMMARY (Arabic):\n${summary}\n\n${relationships}`;
     return new Response(output, {
       headers: { ...corsHeaders, "Content-Type": "text/plain" },

@@ -1,5 +1,3 @@
-// index.ts
-
 import { corsHeaders } from "../shared-one/cors";
 import { ALTERNATIVE_PROMPT } from "./utils";
 
@@ -8,7 +6,7 @@ const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
+  // التعامل مع طلبات CORS المسبقة
   if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: { ...corsHeaders, "Access-Control-Max-Age": "86400" },
@@ -49,25 +47,27 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build the prompt instructing for plain text output.
-    const prompt = `${ALTERNATIVE_PROMPT}
+    // بناء التعليمات باستخدام النص العربي
+    const prompt = `
+${ALTERNATIVE_PROMPT}
 
-Text to analyze:
+النص لتحليله:
 ${text}
 
-Please analyze the text and extract the following information in plain text. Use the markers RESULT_START: and RESULT_END: to enclose your final output.
+يرجى تحليل النص واستخراج المعلومات التالية بالنص العادي. استخدم العلامتين RESULT_START: و RESULT_END: لاحتواء الإخراج النهائي.
 
-Your output should be formatted as follows:
+يجب أن يكون إخراجك بالتنسيق التالي:
 
-ENTITIES:
-- Entity: [entity text], Type: [entity type], Related: [related entity1; related entity2; ...]
+الكيانات:
+- كيان: [نص الكيان], النوع: [نوع الكيان], مرتبط بـ: [الكيان المرتبط 1; الكيان المرتبط 2; ...]
 
-RELATIONSHIPS:
-- [source entity] -> [target entity], Type: [relationship type]
+العلاقات:
+- [الكيان المصدر] -> [الكيان الهدف], النوع: [نوع العلاقة]
 
-Ensure that you do not output any JSON, only plain text.`;
+تأكد من عدم استخدام أي تنسيق JSON؛ فقط استخدم النص العادي.
+`;
 
-    // Call the Gemini API
+    // استدعاء Gemini API
     const response = await fetch(GEMINI_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -127,7 +127,7 @@ Ensure that you do not output any JSON, only plain text.`;
 
     const fullText = data.candidates[0].content.parts[0].text;
 
-    // Extract the custom formatted output between RESULT_START: and RESULT_END:
+    // استخراج الإخراج بين العلامتين RESULT_START: و RESULT_END:
     const startMarker = "RESULT_START:";
     const endMarker = "RESULT_END:";
     const startIndex = fullText.indexOf(startMarker);
@@ -146,7 +146,7 @@ Ensure that you do not output any JSON, only plain text.`;
       .substring(startIndex + startMarker.length, endIndex)
       .trim();
 
-    // Return the plain text output directly.
+    // إعادة الإخراج النصي مباشرة
     return new Response(extracted, {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "text/plain" },
