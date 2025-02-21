@@ -20,7 +20,6 @@ import {
   Panel,
   applyNodeChanges,
   applyEdgeChanges,
-  getRectOfNodes,
   getTransformForBounds,
 } from '@xyflow/react';
 import { toPng } from 'html-to-image';
@@ -44,7 +43,7 @@ const edgeTypes: EdgeTypes = {
 };
 
 const defaultEdgeOptions = {
-  type: 'historical',
+  type: 'historical' as const,
   markerEnd: {
     type: MarkerType.ArrowClosed,
     width: 20,
@@ -70,6 +69,7 @@ const relationshipTypes = [
 
 const getNodePosition = (nodes: Node[]): { x: number; y: number } => {
   if (nodes.length === 0) return { x: 100, y: 100 };
+
   const lastNode = nodes[nodes.length - 1];
   return {
     x: lastNode.position.x + 250,
@@ -77,13 +77,7 @@ const getNodePosition = (nodes: Node[]): { x: number; y: number } => {
   };
 };
 
-function EdgeDialog({
-  isOpen,
-  onClose,
-  onConfirm,
-  defaultType = 'related-to',
-  defaultLabel,
-}: EdgeDialogProps) {
+function EdgeDialog({ isOpen, onClose, onConfirm, defaultType = 'related-to', defaultLabel }: EdgeDialogProps) {
   const [customLabel, setCustomLabel] = useState<string | undefined>(defaultLabel);
   const [selectedType, setSelectedType] = useState<string>(defaultType);
 
@@ -101,7 +95,7 @@ function EdgeDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Relationship Type</Label>
-            <Select defaultValue={defaultType} onValueChange={setSelectedType}>
+            <Select defaultValue={defaultType} onValueChange={(value) => setSelectedType(value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Choose relationship type" />
               </SelectTrigger>
@@ -114,6 +108,7 @@ function EdgeDialog({
               </SelectContent>
             </Select>
           </div>
+
           <div className="space-y-2">
             <Label>Custom Label (Optional)</Label>
             <input
@@ -123,7 +118,9 @@ function EdgeDialog({
               value={customLabel || ''}
               onChange={(e) => setCustomLabel(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') handleConfirm();
+                if (e.key === 'Enter') {
+                  handleConfirm();
+                }
               }}
             />
           </div>
@@ -134,54 +131,104 @@ function EdgeDialog({
   );
 }
 
+// Custom function to calculate the bounding rectangle of nodes
+const getNodesBounds = (nodes: Node[]): { x: number; y: number; width: number; height: number } => {
+  if (nodes.length === 0) {
+    return { x: 0, y: 0, width: 0, height: 0 };
+  }
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  nodes.forEach((node) => {
+    const x = node.position.x;
+    const y = node.position.y;
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  });
+
+  // Add padding and estimated node dimensions
+  const padding = 50;
+  const assumedNodeWidth = 240; // Based on w-60 (240px)
+  const assumedNodeHeight = 100; // Estimate; adjust based on your nodes
+
+  return {
+    x: minX - padding,
+    y: minY - padding,
+    width: maxX - minX + assumedNodeWidth + 2 * padding,
+    height: maxY - minY + assumedNodeHeight + 2 * padding,
+  };
+};
+
 export default function Flow() {
-  const [isMounted, setIsMounted] = useState(false);
-  const [nodes, setNodes] = useState<Node<HistoricalNodeData>[]>(initialNodes);
-  const [edges, setEdges] = useState<Edge<HistoricalEdgeData>[]>(initialEdges);
+  const [nodes, setNodes] = useState<Node<HistoricalNodeData>[]>([]);
+  const [edges, setEdges] = useState<Edge<HistoricalEdgeData>[]>([]);
   const [isEdgeDialogOpen, setIsEdgeDialogOpen] = useState(false);
   const [edgeSourceNode, setEdgeSourceNode] = useState<string | null>(null);
   const [edgeTargetNode, setEdgeTargetNode] = useState<string | null>(null);
 
   const { highlights, removeHighlight } = useHighlightStore();
 
+  // Listen for node data updates
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    const handleNodeUpdate = (event: Event) => {
-      const customEvent = event as CustomEvent<{ id: string; data: HistoricalNodeData }>;
-      const { id, data } = customEvent.detail;
+    const handleNodeUpdate = (event: CustomEvent) => {
+      const { id, data } = event.detail;
       setNodes((nds) =>
-        nds.map((node) => (node.id === id ? { ...node, data: { ...node.data, ...data } } : node))
+        nds.map((node) => {
+          if (node.id === id) {
+            return { ...node, data: { ...node.data, ...data } };
+          }
+          return node;
+        })
       );
     };
 
-    window.addEventListener('updateNodeData', handleNodeUpdate);
-    return () => window.removeEventListener('updateNodeData', handleNodeUpdate);
+    window.addEventListener('updateNodeData', handleNodeUpdate as EventListener);
+    return () => window.removeEventListener('updateNodeData', handleNodeUpdate as EventListener);
   }, []);
 
   const downloadAsPDF = useCallback(() => {
-    if (nodes.length === 0) return;
-    const nodesBounds = getRectOfNodes(nodes);
-    const transform = getTransformForBounds(nodesBounds, nodesBounds.width, nodesBounds.height, 0.5);
-    const flowElement = document.querySelector('.react-flow') as HTMLElement | null;
+    const nodesBounds = getNodesBounds(nodes);
+    const transform = getTransformForBounds(
+      nodesBounds,
+      nodesBounds.width,
+      nodesBounds.height,
+      0.5,
+    );
+
+    const flowElement = document.querySelector('.react-flow') as HTMLElement;
     if (!flowElement) return;
 
     toPng(flowElement, {
       backgroundColor: '#ffffff',
       width: nodesBounds.width,
       height: nodesBounds.height,
-      style: { transform: `translate(${transform[0]}px, ${transform[1]}px) scale(${transform[2]})` },
-    }).then((dataUrl) => {
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'px',
-        format: [nodesBounds.width, nodesBounds.height],
+      style: {
+        transform: `translate(${transform[0]}px, ${transform[1]}px) scale(${transform[2]})`,
+      },
+    })
+      .then((dataUrl) => {
+        const pdf = new jsPDF({
+          orientation: 'landscape',
+          unit: 'px',
+          format: [nodesBounds.width, nodesBounds.height],
+        });
+
+        pdf.addImage(
+          dataUrl,
+          'PNG',
+          0,
+          0,
+          nodesBounds.width,
+          nodesBounds.height,
+        );
+
+        pdf.save('historical-flow.pdf');
       });
-      pdf.addImage(dataUrl, 'PNG', 0, 0, nodesBounds.width, nodesBounds.height);
-      pdf.save('historical-flow.pdf');
-    });
   }, [nodes]);
 
   const onNodesChange = useCallback(
@@ -195,16 +242,15 @@ export default function Flow() {
   );
 
   const onConnect = useCallback((params: Connection) => {
-    if (params.source && params.target) {
-      setEdgeSourceNode(params.source);
-      setEdgeTargetNode(params.target);
-      setIsEdgeDialogOpen(true);
-    }
+    setEdgeSourceNode(params.source || null);
+    setEdgeTargetNode(params.target || null);
+    setIsEdgeDialogOpen(true);
   }, []);
 
   const handleEdgeComplete = useCallback(
     (type: string, customLabel?: string) => {
       if (!edgeSourceNode || !edgeTargetNode) return;
+
       const edgeId = `e${edgeSourceNode}-${edgeTargetNode}`;
       const newEdge: Edge<HistoricalEdgeData> = {
         id: edgeId,
@@ -214,6 +260,7 @@ export default function Flow() {
         data: { type, customLabel },
         animated: true,
       };
+
       setEdges((eds) => [...eds, newEdge]);
       setEdgeSourceNode(null);
       setEdgeTargetNode(null);
@@ -229,8 +276,13 @@ export default function Flow() {
         id: highlight.id,
         type: 'historical',
         position,
-        data: { type, label: highlight.text, description: '' },
+        data: {
+          type,
+          label: highlight.text,
+          description: '',
+        },
       };
+
       setNodes((nds) => [...nds, newNode]);
       removeHighlight(highlight.id);
     },
@@ -243,23 +295,26 @@ export default function Flow() {
         id: `${Date.now()}`,
         type: 'historical',
         position: getNodePosition(nodes),
-        data: { type, label: `New ${type}`, description: `Description for new ${type}` },
+        data: {
+          type,
+          label: `New ${type}`,
+          description: `Description for new ${type}`,
+        },
       };
+
       setNodes((nds) => [...nds, newNode]);
     },
     [nodes]
   );
-
-  if (!isMounted) return null;
 
   return (
     <div className="h-screen w-full">
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodesChange={onNodesChange}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
@@ -268,11 +323,17 @@ export default function Flow() {
         <Background />
         <Controls />
         <Panel position="top-left" className="bg-background/50 backdrop-blur-sm p-2 rounded-lg">
-          <Button variant="outline" size="sm" onClick={downloadAsPDF} className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={downloadAsPDF}
+            className="flex items-center gap-2"
+          >
             <Download size={16} />
             حفظ كـ PDF
           </Button>
         </Panel>
+        {/* Node Creation Panel */}
         <Panel position="top-right" className="bg-background/50 backdrop-blur-sm p-4 rounded-lg w-80">
           <div className="space-y-4">
             <h3 className="font-semibold">Highlighted Passages</h3>
@@ -353,6 +414,7 @@ export default function Flow() {
             )}
           </div>
         </Panel>
+        {/* Node Types Panel */}
         <Panel position="top-left" className="bg-background/50 backdrop-blur-sm p-2 rounded-lg">
           <div className="flex flex-col gap-2">
             <Button
