@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
       headers: {
         ...corsHeaders,
         'Access-Control-Max-Age': '86400',
-      }
+      },
     });
   }
 
@@ -25,11 +25,11 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: 'Invalid request body',
-          details: 'Failed to parse JSON'
+          details: 'Failed to parse JSON',
         }),
         {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
@@ -42,11 +42,11 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: 'Missing required fields',
-          details: 'Text field is required'
+          details: 'Text field is required',
         }),
         {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
@@ -57,11 +57,11 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: 'Server configuration error',
-          details: 'Missing API key'
+          details: 'Missing API key',
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       3. يسلط الضوء على الأسباب والنتائج الرئيسية
       4. يناقش العوامل السياسية والاقتصادية والاجتماعية والثقافية
 
-      After the summary, on a new line write "RELATIONSHIPS_JSON:" followed by a JSON object containing relationships found in the text. The JSON must be a valid object with a "relationships" array.  Do not include any other text or formatting around the JSON object, including markdown.
+      After the summary, on a new line write "RELATIONSHIPS_JSON:" followed by a JSON object containing relationships found in the text. The JSON must be a valid object with a "relationships" array. Do not include any other text or formatting around the JSON object, including markdown.
       Start the JSON object immediately after the colon without any leading text or spaces.
 
       Text to analyze:
@@ -87,21 +87,25 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [{ text: prompt }]
-        }],
+        contents: [
+          {
+            parts: [{ text: prompt }],
+          },
+        ],
         generationConfig: {
           temperature: 0.9,
           topK: 1,
           topP: 1,
           maxOutputTokens: 2048,
-          stopSequences: []
+          stopSequences: [],
         },
-        safetySettings: [{
-          category: "HARM_CATEGORY_HARASSMENT",
-          threshold: "BLOCK_MEDIUM_AND_ABOVE"
-        }]
-      })
+        safetySettings: [
+          {
+            category: "HARM_CATEGORY_HARASSMENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE",
+          },
+        ],
+      }),
     });
 
     // Handle Gemini API response
@@ -113,11 +117,11 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: 'API error',
-          details: 'Failed to parse Gemini API response'
+          details: 'Failed to parse Gemini API response',
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
@@ -127,11 +131,11 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: 'API error',
-          details: 'Error calling Gemini API'
+          details: 'Error calling Gemini API',
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
@@ -141,105 +145,87 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: 'API error',
-          details: 'Invalid response structure from Gemini API'
+          details: 'Invalid response structure from Gemini API',
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
 
     const fullText = data.candidates[0].content.parts[0].text;
-    const [summary, relationshipsRaw] = fullText.split('RELATIONSHIPS_JSON:');
 
-    // Process relationships
+    // Use regex to extract the JSON block that follows the marker
+    const regex = /RELATIONSHIPS_JSON:\s*({[\s\S]*})/;
+    const match = fullText.match(regex);
     let relationships = [];
-    if (relationshipsRaw) {
+    let summary = fullText;
+
+    if (match && match[1]) {
+      const jsonStr = match[1];
       try {
-        // Improved JSON extraction:  Find the *first* '{' and *last* '}'
-
-        let jsonStr = '';
-        const startIdx = relationshipsRaw.indexOf('{');
-        const endIdx = relationshipsRaw.lastIndexOf('}') + 1;
-
-
-        if (startIdx !== -1 && endIdx > startIdx) {
-            //Extract the JSON substring
-            jsonStr = relationshipsRaw.substring(startIdx, endIdx).trim();
-        } else {
-            console.warn("Could not find valid JSON bounds in relationshipsRaw:", relationshipsRaw);
-            throw new Error("Could not find valid JSON bounds.");  // Force error
-        }
-
-        // **AGGRESSIVE CLEANUP: Remove anything before the first '{'**
-        jsonStr = jsonStr.substring(jsonStr.indexOf('{')).trim();
-
-        // Attempt to parse the JSON string
         const parsed = JSON.parse(jsonStr);
-
         if (Array.isArray(parsed.relationships)) {
           relationships = parsed.relationships;
         } else {
           console.warn("Parsed JSON does not have a 'relationships' array:", parsed);
-          // Optionally, handle cases where Gemini returns a valid JSON, but without the array.
         }
-
-
       } catch (error) {
         console.error('Error parsing relationships JSON:', error);
-        console.log('Raw relationships text:', relationshipsRaw);
-        console.log('Extracted JSON string:', jsonStr); // Log the string *before* parsing
-        return new Response( // Return an error response to the client
+        return new Response(
           JSON.stringify({
             error: 'Failed to parse relationships JSON',
             details: error.message,
-            raw_text: relationshipsRaw,  // Include the raw text for debugging
-            extracted_json: jsonStr
+            raw_text: jsonStr,
           }),
           {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
         );
       }
+      // Remove the JSON block from the summary
+      summary = fullText.replace(regex, '').trim();
+    } else {
+      console.warn("Could not extract JSON using regex. Raw text:", fullText);
     }
 
     // Validate relationships format
-    relationships = relationships.filter(rel =>
-      rel &&
-      typeof rel === 'object' &&
-      typeof rel.text === 'string' &&
-      typeof rel.type === 'string'
+    relationships = relationships.filter(
+      (rel) =>
+        rel &&
+        typeof rel === 'object' &&
+        typeof rel.text === 'string' &&
+        typeof rel.type === 'string'
     );
 
     return new Response(
       JSON.stringify({
         summary: summary.trim(),
-        relationships
+        relationships,
       }),
       {
         status: 200,
         headers: {
           ...corsHeaders,
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
       }
     );
-
   } catch (error) {
     console.error('Unexpected error:', error);
     return new Response(
       JSON.stringify({
         error: 'Unexpected error',
-        details: error instanceof Error ? error.message : 'An unknown error occurred'
+        details: error instanceof Error ? error.message : 'An unknown error occurred',
       }),
       {
         status: 500,
         headers: {
           ...corsHeaders,
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
       }
     );
   }
