@@ -1,6 +1,16 @@
 import Elk from 'elkjs/lib/elk.bundled.js';
 import { Node, Edge } from '@xyflow/react';
 
+export interface Position {
+  x: number;
+  y: number;
+}
+
+export interface Size {
+  width: number;
+  height: number;
+}
+
 export async function elkLayout(nodes: Node[], edges: Edge[]) {
   const elk = new Elk({
     defaultLayoutOptions: {
