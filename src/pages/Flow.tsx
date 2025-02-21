@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCallback, useState, useEffect } from 'react';
@@ -21,19 +22,14 @@ import {
   Panel,
   applyNodeChanges,
   applyEdgeChanges,
-  getViewportForBounds,
   useReactFlow,
 } from '@xyflow/react';
-import { toPng } from 'html-to-image';
-import { jsPDF } from 'jspdf';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import HistoricalNode, { NodeType, HistoricalNodeData } from '../components/HistoricalNode';
 import { HistoricalEdge, HistoricalEdgeData } from '../components/HistoricalEdge';
-import { getNodePosition, getNodesBounds } from '../utils/flowUtils';
-import { LeftPanel } from './LeftPanel';
-import { RightPanel } from './RightPanel';
+import { getNodesBounds } from '../utils/flowUtils';
 
 const edgeTypes: EdgeTypes = {
   historical: HistoricalEdge,
@@ -52,9 +48,7 @@ const nodeTypes = {
   historical: HistoricalNode,
 };
 
-const initialNodes: Node<HistoricalNodeData>[] = [];
-const initialEdges: Edge<HistoricalEdgeData>[] = [];
-
+// Separate the main flow content into its own component
 const FlowContent = () => {
   const [nodes, setNodes] = useState<Node<HistoricalNodeData>[]>([]);
   const [edges, setEdges] = useState<Edge<HistoricalEdgeData>[]>([]);
@@ -65,101 +59,60 @@ const FlowContent = () => {
   const { highlights, removeHighlight } = useHighlightStore();
   const { setViewport } = useReactFlow();
 
-  // Listen for node data updates
+  // Listen for analysis results
   useEffect(() => {
-    const handleNodeUpdate = (event: Event) => {
-      const customEvent = event as CustomEvent<{ id: string; data: HistoricalNodeData }>;
-      const { id, data } = customEvent.detail;
-      setNodes((nds) =>
-        nds.map((node) => (node.id === id ? { ...node, data } : node))
-      );
+    const handleAnalysisResults = (event: CustomEvent) => {
+      const { entities, relationships } = event.detail;
+      
+      // Create nodes for each entity
+      const newNodes: Node<HistoricalNodeData>[] = entities.map((entity: any, index: number) => ({
+        id: `entity-${index}`,
+        type: 'historical',
+        position: {
+          x: 100 + (index % 3) * 300,
+          y: 100 + Math.floor(index / 3) * 200,
+        },
+        data: {
+          type: entity.type.toLowerCase() as NodeType,
+          label: entity.text,
+          description: '',
+        },
+      }));
+
+      // Create edges for relationships
+      const newEdges: Edge<HistoricalEdgeData>[] = relationships.map((rel: any, index: number) => {
+        const sourceNode = newNodes.find(node => node.data.label === rel.source);
+        const targetNode = newNodes.find(node => node.data.label === rel.target);
+        
+        if (!sourceNode || !targetNode) return null;
+
+        return {
+          id: `edge-${index}`,
+          source: sourceNode.id,
+          target: targetNode.id,
+          type: 'historical',
+          data: {
+            type: rel.type.toLowerCase(),
+          },
+          animated: true,
+        };
+      }).filter(Boolean) as Edge<HistoricalEdgeData>[];
+
+      setNodes(newNodes);
+      setEdges(newEdges);
     };
 
-    window.addEventListener('updateNodeData', handleNodeUpdate);
-    return () => window.removeEventListener('updateNodeData', handleNodeUpdate);
+    window.addEventListener('analysisResults', handleAnalysisResults as EventListener);
+    return () => window.removeEventListener('analysisResults', handleAnalysisResults as EventListener);
   }, []);
 
-  const fitView = useCallback(() => {
-    if (nodes.length === 0) return;
-    const bounds = getNodesBounds(nodes);
-    const viewport = getViewportForBounds(
-      bounds,
-      window.innerWidth,
-      window.innerHeight,
-      0.5,
-      2
-    );
-    setViewport(viewport);
-  }, [nodes, setViewport]);
-
-  const downloadAsPDF = useCallback(() => {
-    if (nodes.length === 0) return;
-
-    const flowElement = document.querySelector('.react-flow') as HTMLElement | null;
-    if (!flowElement) return;
-
-    // Get the flow wrapper element
-    const flowWrapper = flowElement.querySelector('.react-flow__viewport') as HTMLElement | null;
-    if (!flowWrapper) return;
-
-    // Calculate the bounds of all nodes
-    const nodesBounds = getNodesBounds(nodes);
-    const padding = 50;
-    const width = nodesBounds.width + (padding * 2);
-    const height = nodesBounds.height + (padding * 2);
-
-    // Save current styles
-    const currentTransform = flowWrapper.style.transform;
-    const currentWidth = flowWrapper.style.width;
-    const currentHeight = flowWrapper.style.height;
-
-    // Temporarily modify the wrapper
-    flowWrapper.style.width = `${width}px`;
-    flowWrapper.style.height = `${height}px`;
-    flowWrapper.style.transform = 'translate(0,0) scale(1)';
-
-    toPng(flowWrapper, {
-      backgroundColor: '#ffffff',
-      width,
-      height,
-      style: {
-        width: `${width}px`,
-        height: `${height}px`,
-      },
-      filter: (node) => {
-        // Only include nodes and edges
-        return (
-          node.classList?.contains('react-flow__node') ||
-          node.classList?.contains('react-flow__edge') ||
-          node.classList?.contains('react-flow__edge-path') ||
-          node.classList?.contains('react-flow__connection-path')
-        );
-      }
-    })
-      .then((dataUrl) => {
-        const pdf = new jsPDF({
-          orientation: width > height ? 'landscape' : 'portrait',
-          unit: 'px',
-          format: [width, height]
-        });
-
-        pdf.addImage(dataUrl, 'PNG', padding, padding, width - (padding * 2), height - (padding * 2));
-        pdf.save('historical-flow.pdf');
-
-        // Restore original styles
-        flowWrapper.style.transform = currentTransform;
-        flowWrapper.style.width = currentWidth;
-        flowWrapper.style.height = currentHeight;
-      });
-  }, [nodes]);
-
   const onNodesChange = useCallback(
-    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as Node<HistoricalNodeData>[]),
     []
   );
 
   const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+    (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds) as Edge<HistoricalEdgeData>[]),
     []
   );
 
@@ -191,34 +144,6 @@ const FlowContent = () => {
     [edgeSourceNode, edgeTargetNode]
   );
 
-  const createNodeFromHighlight = useCallback(
-    (highlight: { id: string; text: string }, type: NodeType) => {
-      const position = getNodePosition(nodes);
-      const newNode: Node<HistoricalNodeData> = {
-        id: highlight.id,
-        type: 'historical',
-        position,
-        data: { type, label: highlight.text, description: '' },
-      };
-      setNodes((nds) => [...nds, newNode]);
-      removeHighlight(highlight.id);
-    },
-    [nodes, removeHighlight]
-  );
-
-  const addNode = useCallback(
-    (type: NodeType) => {
-      const newNode: Node<HistoricalNodeData> = {
-        id: `${Date.now()}`,
-        type: 'historical',
-        position: getNodePosition(nodes),
-        data: { type, label: `New ${type}`, description: `Description for new ${type}` },
-      };
-      setNodes((nds) => [...nds, newNode]);
-    },
-    [nodes]
-  );
-
   return (
     <div className="h-screen w-full">
       <ReactFlow
@@ -234,26 +159,30 @@ const FlowContent = () => {
       >
         <Background />
         <Controls />
-        <LeftPanel
-          onFitView={fitView}
-          onDownloadPDF={downloadAsPDF}
-          onAddNode={addNode}
-        />
-        <RightPanel
-          highlights={highlights}
-          onCreateNodeFromHighlight={createNodeFromHighlight}
-        />
       </ReactFlow>
-      <EdgeDialog
-        isOpen={isEdgeDialogOpen}
-        onClose={() => setIsEdgeDialogOpen(false)}
-        onConfirm={handleEdgeComplete}
-        defaultType="related-to"
-      />
+      <Dialog open={isEdgeDialogOpen} onOpenChange={setIsEdgeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>نوع العلاقة</DialogTitle>
+          </DialogHeader>
+          <Select onValueChange={(value) => handleEdgeComplete(value)} defaultValue="related-to">
+            <SelectTrigger>
+              <SelectValue placeholder="اختر نوع العلاقة" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="related-to">مرتبط بـ</SelectItem>
+              <SelectItem value="causes">يسبب</SelectItem>
+              <SelectItem value="influences">يؤثر على</SelectItem>
+              <SelectItem value="part-of">جزء من</SelectItem>
+            </SelectContent>
+          </Select>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
+// Wrap the FlowContent with ReactFlowProvider
 export default function Flow() {
   return (
     <ReactFlowProvider>

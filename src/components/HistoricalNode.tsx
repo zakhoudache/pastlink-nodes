@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 export type NodeType = 'event' | 'person' | 'cause' | 'political' | 'economic' | 'social' | 'cultural';
 
 // Interface for node data
-export interface HistoricalNodeData {
+export interface HistoricalNodeData extends Record<string, unknown> {
   label: string;
   type: NodeType;
   description?: string;
