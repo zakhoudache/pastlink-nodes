@@ -1,24 +1,20 @@
 // supabase/functions/analyze-text/index.ts
-const express = require('express');
-const cors = require('cors');
+import { corsHeaders } from '../shared-one/cors';
 
-const app = express();
-let nodeFetch: any;
-(async () => {
-  nodeFetch = await import('node-fetch');
-})();
-const port = 3000;
-
-app.use(cors());
-app.use(express.json());
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
-app.post('/', async (req: any, res: any) => {
+Deno.serve(async (req: any) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
+  }
+
   try {
-    const { text } = req.body;
+    const { text } = await req.json();
 
     const prompt = `
       Please analyze the following historical text and provide a comprehensive summary in Arabic that:
@@ -54,10 +50,13 @@ app.post('/', async (req: any, res: any) => {
 
     if (!GEMINI_API_KEY) {
       console.error('Gemini API key is not set');
-      return res.status(500).json({ error: 'Gemini API key missing' });
+      return new Response(JSON.stringify({ error: 'Gemini API key missing' }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
-    const response = await nodeFetch.default(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
@@ -72,7 +71,10 @@ app.post('/', async (req: any, res: any) => {
       !data.candidates[0].content
     ) {
       console.error('Gemini API error:', JSON.stringify(data, null, 2));
-      return res.status(502).json({ error: 'Gemini API returned an unexpected response.' });
+      return new Response(JSON.stringify({ error: 'Gemini API returned an unexpected response.' }), {
+        status: 502,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const fullText = data.candidates[0].content.parts[0].text;
@@ -92,24 +94,35 @@ app.post('/', async (req: any, res: any) => {
       }
     } catch (e: any) {
       console.error('Error parsing relationships JSON:', e);
-      return res.status(500).json({
+      return new Response(JSON.stringify({
         error: 'Error parsing Gemini response JSON',
         details: (e as Error).message,
         geminiResponse: fullText,
+      }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
       });
     }
 
-    res.json({ summary: summary.trim(), relationships });
+    return new Response(
+      JSON.stringify({ summary: summary.trim(), relationships }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      }
+    );
   } catch (error) {
     console.error('Error generating summary:', error);
     let errorMessage = 'An unexpected error occurred.';
     if (error instanceof Error) {
       errorMessage = error.message;
     }
-    res.status(500).json({ error: errorMessage });
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
-});
-
-app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
 });
