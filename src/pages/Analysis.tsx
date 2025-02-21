@@ -34,6 +34,21 @@ export default function Analysis() {
     },
   });
 
+  useEffect(() => {
+    if (analysis && !isLoading && !error) {
+      // Dispatch analysis results to Flow component
+      const event = new CustomEvent('analysisResults', {
+        detail: analysis
+      });
+      window.dispatchEvent(event);
+
+      toast({
+        title: "تم التحليل بنجاح",
+        description: "تم اكتشاف العلاقات والكيانات التاريخية.",
+      });
+    }
+  }, [analysis, isLoading, error, toast]);
+
   if (error) {
     toast({
       variant: "destructive",

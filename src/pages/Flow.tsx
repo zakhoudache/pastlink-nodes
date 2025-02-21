@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -128,13 +129,60 @@ function EdgeDialog({ isOpen, onClose, onConfirm, defaultType = 'related-to', de
 }
 
 export default function Flow() {
-  const [nodes, setNodes] = useState<Node<HistoricalNodeData>[]>(initialNodes);
-  const [edges, setEdges] = useState<Edge<HistoricalEdgeData>[]>(initialEdges);
+  const [nodes, setNodes] = useState<Node<HistoricalNodeData>[]>([]);
+  const [edges, setEdges] = useState<Edge<HistoricalEdgeData>[]>([]);
   const [isEdgeDialogOpen, setIsEdgeDialogOpen] = useState(false);
   const [edgeSourceNode, setEdgeSourceNode] = useState<string | null>(null);
   const [edgeTargetNode, setEdgeTargetNode] = useState<string | null>(null);
 
   const { highlights, removeHighlight } = useHighlightStore();
+
+  // Subscribe to analysis results
+  useEffect(() => {
+    const handleAnalysisResults = (event: CustomEvent) => {
+      const { entities, relationships } = event.detail;
+      
+      // Create nodes for each entity
+      const newNodes: Node<HistoricalNodeData>[] = entities.map((entity: any, index: number) => ({
+        id: `entity-${index}`,
+        type: 'historical',
+        position: {
+          x: 100 + (index % 3) * 300,
+          y: 100 + Math.floor(index / 3) * 200,
+        },
+        data: {
+          type: entity.type.toLowerCase() as NodeType,
+          label: entity.text,
+          description: '',
+        },
+      }));
+
+      // Create edges for relationships
+      const newEdges: Edge<HistoricalEdgeData>[] = relationships.map((rel: any, index: number) => {
+        const sourceNode = newNodes.find(node => node.data.label === rel.source);
+        const targetNode = newNodes.find(node => node.data.label === rel.target);
+        
+        if (!sourceNode || !targetNode) return null;
+
+        return {
+          id: `edge-${index}`,
+          source: sourceNode.id,
+          target: targetNode.id,
+          type: 'historical',
+          data: {
+            type: rel.type.toLowerCase(),
+          },
+          animated: true,
+        };
+      }).filter(Boolean) as Edge<HistoricalEdgeData>[];
+
+      setNodes(newNodes);
+      setEdges(newEdges);
+    };
+
+    window.addEventListener('analysisResults', handleAnalysisResults as EventListener);
+    return () => window.removeEventListener('analysisResults', handleAnalysisResults as EventListener);
+  }, []);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
