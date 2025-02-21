@@ -100,23 +100,11 @@ serve(async (req) => {
 
       try {
         if (relationshipsJson) {
-          // Use a regular expression to extract the JSON
-          const jsonMatch = relationshipsJson.match(/```json\s*([\s\S]*?)\s*```/);
-          if (jsonMatch && jsonMatch[1]) {
-            relationships = JSON.parse(jsonMatch[1].trim()).relationships;
-          } else {
-            console.error('Error: Could not find JSON in Gemini response.');
-            return new Response(
-              JSON.stringify({
-                error:
-                  'Could not find relationships JSON in the expected format.',
-              }),
-              {
-                status: 500,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              }
-            );
-          }
+          // Remove markdown backticks if present
+          const cleanedJson = relationshipsJson.replace(/```/g, '').trim();
+
+          // Parse the cleaned JSON
+          relationships = JSON.parse(cleanedJson).relationships;
         }
       } catch (e) {
         console.error('Error parsing relationships JSON:', e);
