@@ -1,7 +1,7 @@
 {
     "image": "mcr.microsoft.com/devcontainers/javascript-node:0-18",
-    "postCreateCommand": "npm install -g supabase",
-      "customizations": {
+    "postCreateCommand": "sh -c 'npm install -g supabase'", // Use sh -c
+    "customizations": {
           "codespaces": {
             "openFiles": ["README.md"]
           }
