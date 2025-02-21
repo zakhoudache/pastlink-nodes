@@ -20,7 +20,7 @@ import {
   Panel,
   applyNodeChanges,
   applyEdgeChanges,
-  getTransformForBounds,
+  getViewportForBounds,
 } from '@xyflow/react';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
@@ -194,7 +194,7 @@ export default function Flow() {
   const downloadAsPDF = useCallback(() => {
     if (nodes.length === 0) return;
     const nodesBounds = getNodesBounds(nodes);
-    const transform = getTransformForBounds(nodesBounds, nodesBounds.width, nodesBounds.height, 0.5);
+    const transform = getViewportForBounds(nodesBounds, nodesBounds.width, nodesBounds.height, 0.5);
     const flowElement = document.querySelector('.react-flow') as HTMLElement | null;
     if (!flowElement) return;
 
