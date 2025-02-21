@@ -74,7 +74,7 @@ serve(async (req) => {
       });
 
       const data = await response.json();
-      console.log('Full Gemini API response:', data);
+      console.log('Full Gemini API response:', JSON.stringify(data, null, 2));
 
       // Check for Gemini API errors
       if (
@@ -82,7 +82,7 @@ serve(async (req) => {
         data.candidates.length === 0 ||
         !data.candidates[0].content
       ) {
-        console.error('Gemini API error:', data);
+        console.error('Gemini API error:', JSON.stringify(data, null, 2));
         return new Response(
           JSON.stringify({
             error: 'Gemini API returned an unexpected response.',
