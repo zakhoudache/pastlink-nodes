@@ -100,10 +100,11 @@ serve(async (req) => {
 
       try {
         if (relationshipsJson) {
-          // Remove markdown backticks if present
-          const cleanedJson = relationshipsJson.replace(/```/g, '').trim();
-
-          // Parse the cleaned JSON
+          // Remove markdown backticks and a potential "json" prefix if present
+          const cleanedJson = relationshipsJson
+            .replace(/```/g, '')
+            .replace(/^json\s*/i, '')
+            .trim();
           relationships = JSON.parse(cleanedJson).relationships;
         }
       } catch (e) {
