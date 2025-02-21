@@ -1,4 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import {
+  useReactTable,
+  ColumnDef,
+  flexRender,
+  getCoreRowModel
+} from '@tanstack/react-table';
 
 interface Relationship {
   source: string;
@@ -11,25 +17,62 @@ interface RelationshipsTableProps {
 }
 
 const RelationshipsTable: React.FC<RelationshipsTableProps> = ({ relationships }) => {
+  const columns = useMemo<ColumnDef<Relationship>[]>(
+    () => [
+      {
+        header: 'Source',
+        accessorKey: 'source',
+      },
+      {
+        header: 'Target',
+        accessorKey: 'target',
+      },
+      {
+        header: 'Type',
+        accessorKey: 'type',
+      },
+    ],
+    []
+  );
+
+  const table = useReactTable({
+    data: relationships,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Source</th>
-          <th>Target</th>
-          <th>Type</th>
-        </tr>
-      </thead>
-      <tbody>
-        {relationships.map((relationship, index) => (
-          <tr key={index}>
-            <td>{relationship.source}</td>
-            <td>{relationship.target}</td>
-            <td>{relationship.type}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div>
+      <table>
+        <thead>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <th key={header.id}>
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                </th>
+              ))}
+            </tr>
+          ))}
+        </thead>
+        <tbody>
+          {table.getRowModel().rows.map((row) => (
+            <tr key={row.id}>
+              {row.getVisibleCells().map((cell) => (
+                <td key={cell.id}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 };
 
