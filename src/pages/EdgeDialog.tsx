@@ -1,9 +1,9 @@
-
 import React, { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 
 interface EdgeDialogProps {
   isOpen: boolean;
@@ -13,31 +13,58 @@ interface EdgeDialogProps {
   defaultLabel?: string;
 }
 
-export function EdgeDialog({ isOpen, onClose, onConfirm, defaultType = 'related-to', defaultLabel }: EdgeDialogProps) {
-  const [customLabel, setCustomLabel] = useState<string | undefined>(defaultLabel);
+const relationshipTypes = [
+  'Caused by',
+  'Led to',
+  'Influenced',
+  'Part of',
+  'Opposed to',
+  'Related to',
+] as const;
+
+export function EdgeDialog({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  defaultType = 'related-to', 
+  defaultLabel 
+}: EdgeDialogProps) {
+  const [customLabel, setCustomLabel] = useState<string>(defaultLabel || '');
   const [selectedType, setSelectedType] = useState<string>(defaultType);
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+  };
+
   const handleConfirm = () => {
-    onConfirm(selectedType, customLabel);
+    onConfirm(selectedType, customLabel || undefined);
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Select Relationship Type</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Relationship Type</Label>
-            <Select defaultValue={defaultType} onValueChange={(value) => setSelectedType(value)}>
-              <SelectTrigger>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="relationship-type">Relationship Type</Label>
+            <Select
+              value={selectedType}
+              onValueChange={setSelectedType}
+            >
+              <SelectTrigger id="relationship-type">
                 <SelectValue placeholder="Choose relationship type" />
               </SelectTrigger>
               <SelectContent>
                 {relationshipTypes.map((type) => (
-                  <SelectItem key={type} value={type.toLowerCase().replace(/ /g, '-')}>
+                  <SelectItem 
+                    key={type} 
+                    value={type.toLowerCase().replace(/ /g, '-')}
+                  >
                     {type}
                   </SelectItem>
                 ))}
@@ -45,13 +72,13 @@ export function EdgeDialog({ isOpen, onClose, onConfirm, defaultType = 'related-
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label>Custom Label (Optional)</Label>
-            <input
+          <div className="grid gap-2">
+            <Label htmlFor="custom-label">Custom Label (Optional)</Label>
+            <Input
+              id="custom-label"
               type="text"
-              className="w-full px-3 py-2 border rounded-md"
               placeholder="Enter custom label"
-              value={customLabel || ''}
+              value={customLabel}
               onChange={(e) => setCustomLabel(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -60,19 +87,11 @@ export function EdgeDialog({ isOpen, onClose, onConfirm, defaultType = 'related-
               }}
             />
           </div>
+        </div>
+        <div className="flex justify-end">
           <Button onClick={handleConfirm}>Confirm</Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
-
-const relationshipTypes = [
-  'Caused by',
-  'Led to',
-  'Influenced',
-  'Part of',
-  'Opposed to',
-  'Related to',
-];
-
