@@ -66,25 +66,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Modified prompt with explicit markers for summary and JSON output.
+    // Robust prompt with explicit markers for summary and relationships JSON output.
     const prompt = `
-      Please analyze the following historical text and provide a comprehensive summary in Arabic that:
-      1. يحدد الأحداث والشخصيات والمفاهيم الرئيسية
-      2. يشرح العلاقات بين العناصر المختلفة
-      3. يسلط الضوء على الأسباب والنتائج الرئيسية
-      4. يناقش العوامل السياسية والاقتصادية والاجتماعية والثقافية
+      You are an AI assistant that analyzes historical texts in Arabic.
+      Your tasks are:
+      1. Provide a comprehensive summary (in Arabic) of the key events, personalities, and concepts in the text.
+      2. Identify relationships between these elements, including the relationship type (e.g., cause, event, etc.).
 
-      Your output must strictly follow this format:
-
+      Your output must strictly adhere to the following format without any extra commentary, markdown, or formatting:
+      
       SUMMARY_START:
       [Your summary in Arabic here]
       SUMMARY_END:
       RELATIONSHIPS_JSON_START:
-      {"relationships": [{"text": "example", "type": "example"}]}
+      {
+        "relationships": [
+          { "source": "source entity text", "target": "target entity text", "type": "relationship type" }
+        ]
+      }
       RELATIONSHIPS_JSON_END:
-
-      Do not include any extra text or formatting outside these markers.
-
+      
+      Do not include any additional text or markers other than those specified above.
+      
       Text to analyze:
       ${text}
     `;
@@ -165,7 +168,7 @@ Deno.serve(async (req) => {
 
     const fullText = data.candidates[0].content.parts[0].text;
 
-    // Use regex to extract the summary and the JSON block
+    // Use regex to extract the summary and the relationships JSON block
     const summaryRegex = /SUMMARY_START:\s*([\s\S]*?)\s*SUMMARY_END:/;
     const jsonRegex = /RELATIONSHIPS_JSON_START:\s*({[\s\S]*?})\s*RELATIONSHIPS_JSON_END:/;
 
@@ -187,7 +190,7 @@ Deno.serve(async (req) => {
       // Remove any unwanted characters before the first '{'
       const firstCurly = jsonStr.indexOf('{');
       if (firstCurly !== -1) {
-        jsonStr = jsonStr.substring(firstCurly);
+        jsonStr = jsonStr.substring(firstCurly).trim();
       }
 
       try {
