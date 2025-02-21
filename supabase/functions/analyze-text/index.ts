@@ -96,6 +96,7 @@ Ensure that you do not output any JSON, only plain text.`;
     let data;
     try {
       data = await response.json();
+      console.log(data);
     } catch (error) {
       console.error("Error parsing Gemini API response:", error);
       return new Response(
