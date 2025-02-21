@@ -15,18 +15,18 @@ interface EntityAnalysisResponse {
   }>;
 }
 
-const SYSTEM_PROMPT = `You are an AI assistant that analyzes historical texts in Arabic.
+const SYSTEM_PROMPT = `You are an AI assistant that analyzes historical texts written in Arabic.
 Your task is to:
-1. Identify key entities (events, people, causes, and PESC factors)
-2. Classify each entity into one of these types: event, person, cause, political, economic, social, cultural
-3. Identify relationships between entities
+1. Identify key entities (events, people, causes, and factors in political, economic, social, and cultural domains).
+2. Classify each entity into one of the following types: event, person, cause, political, economic, social, cultural.
+3. Identify relationships between these entities.
 
-Return the response in the following format exactly (do not include any extra text):
+Return your output strictly in the exact JSON format below. Do not include any additional text, commentary, markdown, or code block delimiters. Your output must begin on a new line with the marker RESULT_START: and end on a new line with the marker RESULT_END:.
 
 RESULT_START:
 {
   "entities": [
-    { "text": "entity text", "type": "type of entity", "relatedTo": ["related entity texts"] }
+    { "text": "entity text", "type": "entity type", "relatedTo": ["related entity text"] }
   ],
   "relationships": [
     { "source": "source entity text", "target": "target entity text", "type": "relationship type" }
@@ -77,7 +77,7 @@ export async function analyzeText(text: string): Promise<EntityAnalysisResponse>
     throw new Error('Failed to extract JSON from analysis results');
   }
 
-  // Clean up potential unwanted prefix (e.g. "json") before the JSON object
+  // Clean up potential unwanted prefix before the JSON object (e.g., "json")
   if (jsonStr.toLowerCase().startsWith('json')) {
     const firstBraceIndex = jsonStr.indexOf('{');
     if (firstBraceIndex !== -1) {
