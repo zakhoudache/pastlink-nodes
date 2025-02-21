@@ -74,7 +74,7 @@ ${text}
       body: JSON.stringify({
         contents: [
           {
-            parts: [{ text: prompt }],
+            parts:  prompt ,
           },
         ],
         generationConfig: {
