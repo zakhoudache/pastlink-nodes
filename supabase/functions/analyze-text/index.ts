@@ -1,4 +1,3 @@
-// supabase/functions/analyze-text/index.ts
 import { corsHeaders } from '../shared-one/cors';
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
@@ -32,7 +31,7 @@ Deno.serve(async (req: any) => {
       - social
       - cultural
 
-      Format the relationships part in JSON like this:
+      Format the relationships part in valid JSON like this example (ensure it's proper JSON format):
       {
         "relationships": [
           {
@@ -45,14 +44,15 @@ Deno.serve(async (req: any) => {
       Text to analyze:
       ${text}
 
-      First provide the Arabic summary, then on a new line start with "RELATIONSHIPS_JSON:" followed by the JSON.
+      First provide the Arabic summary, then on a new line write exactly "RELATIONSHIPS_JSON:" followed by the JSON on the next line.
+      Ensure the JSON is properly formatted and valid.
     `;
 
     if (!GEMINI_API_KEY) {
       console.error('Gemini API key is not set');
       return new Response(JSON.stringify({ error: 'Gemini API key missing' }), {
         status: 500,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
@@ -63,66 +63,90 @@ Deno.serve(async (req: any) => {
     });
 
     const data = await response.json();
-    console.log('Full Gemini API response:', JSON.stringify(data, null, 2));
-
-    if (
-      !data.candidates ||
-      data.candidates.length === 0 ||
-      !data.candidates[0].content
-    ) {
+    
+    if (!response.ok) {
       console.error('Gemini API error:', JSON.stringify(data, null, 2));
-      return new Response(JSON.stringify({ error: 'Gemini API returned an unexpected response.' }), {
+      return new Response(JSON.stringify({ 
+        error: 'Gemini API request failed',
+        details: data.error?.message || 'Unknown error'
+      }), {
+        status: response.status,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      console.error('Invalid Gemini API response:', JSON.stringify(data, null, 2));
+      return new Response(JSON.stringify({ 
+        error: 'Invalid response format from Gemini API'
+      }), {
         status: 502,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
     const fullText = data.candidates[0].content.parts[0].text;
-    const [summary, relationshipsJson] = fullText.split('RELATIONSHIPS_JSON:');
-    let relationships = [];
+    const [summary, relationshipsRaw] = fullText.split('RELATIONSHIPS_JSON:');
 
+    // More robust JSON extraction
+    let relationships = [];
     try {
-      if (relationshipsJson) {
-        const cleanedJson = relationshipsJson
-          .replace(/`/g, '')
-          .replace(/^json\s*/i, '')
+      if (relationshipsRaw) {
+        // Clean up the JSON string
+        const jsonStr = relationshipsRaw
+          .replace(/```json\s*/g, '') // Remove JSON code block markers
+          .replace(/```\s*/g, '')     // Remove closing code block markers
+          .replace(/^json\s*/i, '')   // Remove "json" prefix
           .trim();
 
-        console.log('Cleaned JSON:', cleanedJson);
-
-        relationships = JSON.parse(cleanedJson).relationships;
+        // Try to find JSON object bounds
+        const startIdx = jsonStr.indexOf('{');
+        const endIdx = jsonStr.lastIndexOf('}') + 1;
+        
+        if (startIdx >= 0 && endIdx > startIdx) {
+          const cleanJson = jsonStr.slice(startIdx, endIdx);
+          const parsed = JSON.parse(cleanJson);
+          
+          if (Array.isArray(parsed.relationships)) {
+            relationships = parsed.relationships;
+          } else {
+            throw new Error('Invalid relationships structure');
+          }
+        } else {
+          throw new Error('Could not find valid JSON object bounds');
+        }
       }
-    } catch (e: any) {
+    } catch (e) {
       console.error('Error parsing relationships JSON:', e);
+      console.log('Raw relationships text:', relationshipsRaw);
       return new Response(JSON.stringify({
-        error: 'Error parsing Gemini response JSON',
-        details: (e as Error).message,
-        geminiResponse: fullText,
+        error: 'Failed to parse relationships data',
+        details: e instanceof Error ? e.message : 'Unknown error',
+        summary: summary.trim(), // Still return the summary even if relationships parsing fails
+        relationships: [] // Return empty relationships array
       }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
+        status: 200, // Return 200 since we still have useful data
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
     return new Response(
-      JSON.stringify({ summary: summary.trim(), relationships }),
-      {
+      JSON.stringify({ 
+        summary: summary.trim(), 
+        relationships 
+      }), {
         status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          ...corsHeaders,
-        },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       }
     );
   } catch (error) {
-    console.error('Error generating summary:', error);
-    let errorMessage = 'An unexpected error occurred.';
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    }
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    console.error('Error processing request:', error);
+    return new Response(JSON.stringify({ 
+      error: 'An unexpected error occurred',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }), {
       status: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   }
 });
