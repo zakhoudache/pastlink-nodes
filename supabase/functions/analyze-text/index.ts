@@ -1,16 +1,20 @@
+// index.ts
+
 import { corsHeaders } from '../shared-one/cors';
 import { createClient } from '@supabase/supabase-js';
+import { SUMMARY_RELATIONSHIPS_PROMPT } from './utils';
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+const GEMINI_API_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: {
         ...corsHeaders,
-        'Access-Control-Max-Age': '86400',
+        "Access-Control-Max-Age": "86400",
       },
     });
   }
@@ -21,15 +25,15 @@ Deno.serve(async (req) => {
     try {
       requestBody = await req.json();
     } catch (error) {
-      console.error('Error parsing request body:', error);
+      console.error("Error parsing request body:", error);
       return new Response(
         JSON.stringify({
-          error: 'Invalid request body',
-          details: 'Failed to parse JSON',
+          error: "Invalid request body",
+          details: "Failed to parse JSON",
         }),
         {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
@@ -38,65 +42,42 @@ Deno.serve(async (req) => {
 
     // Validate required fields
     if (!text) {
-      console.error('Missing required text field');
+      console.error("Missing required text field");
       return new Response(
         JSON.stringify({
-          error: 'Missing required fields',
-          details: 'Text field is required',
+          error: "Missing required fields",
+          details: "Text field is required",
         }),
         {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
 
     // Check for API key
     if (!GEMINI_API_KEY) {
-      console.error('Missing Gemini API key');
+      console.error("Missing Gemini API key");
       return new Response(
         JSON.stringify({
-          error: 'Server configuration error',
-          details: 'Missing API key',
+          error: "Server configuration error",
+          details: "Missing API key",
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
 
-    // Robust prompt with explicit markers for summary and relationships JSON output.
-    const prompt = `
-      You are an AI assistant that analyzes historical texts in Arabic.
-      Your tasks are:
-      1. Provide a comprehensive summary (in Arabic) of the key events, personalities, and concepts in the text.
-      2. Identify relationships between these elements, including the relationship type (e.g., cause, event, etc.).
-
-      Your output must strictly adhere to the following format without any extra commentary, markdown, or formatting:
-      
-      SUMMARY_START:
-      [Your summary in Arabic here]
-      SUMMARY_END:
-      RELATIONSHIPS_JSON_START:
-      {
-        "relationships": [
-          { "source": "source entity text", "target": "target entity text", "type": "relationship type" }
-        ]
-      }
-      RELATIONSHIPS_JSON_END:
-      
-      Do not include any additional text or markers other than those specified above.
-      
-      Text to analyze:
-      ${text}
-    `;
+    // Build prompt using the robust prompt from utils.ts
+    const prompt = `${SUMMARY_RELATIONSHIPS_PROMPT}\n\nText to analyze:\n${text}`;
 
     // Call Gemini API
     const response = await fetch(GEMINI_API_URL, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         contents: [
@@ -125,52 +106,52 @@ Deno.serve(async (req) => {
     try {
       data = await response.json();
     } catch (error) {
-      console.error('Error parsing Gemini API response:', error);
+      console.error("Error parsing Gemini API response:", error);
       return new Response(
         JSON.stringify({
-          error: 'API error',
-          details: 'Failed to parse Gemini API response',
+          error: "API error",
+          details: "Failed to parse Gemini API response",
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
 
     if (!response.ok) {
-      console.error('Gemini API error:', data);
+      console.error("Gemini API error:", data);
       return new Response(
         JSON.stringify({
-          error: 'API error',
-          details: 'Error calling Gemini API',
+          error: "API error",
+          details: "Error calling Gemini API",
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
 
     if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      console.error('Invalid Gemini API response structure:', data);
+      console.error("Invalid Gemini API response structure:", data);
       return new Response(
         JSON.stringify({
-          error: 'API error',
-          details: 'Invalid response structure from Gemini API',
+          error: "API error",
+          details: "Invalid response structure from Gemini API",
         }),
         {
           status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
 
     const fullText = data.candidates[0].content.parts[0].text;
 
-    // Use regex to extract the summary and the relationships JSON block
+    // Extract summary and relationships JSON using explicit markers
     const summaryRegex = /SUMMARY_START:\s*([\s\S]*?)\s*SUMMARY_END:/;
-    const jsonRegex = /RELATIONSHIPS_JSON_START:\s*({[\s\S]*?})\s*RELATIONSHIPS_JSON_END:/;
+    const relationshipsRegex = /RELATIONSHIPS_JSON_START:\s*({[\s\S]*?})\s*RELATIONSHIPS_JSON_END:/;
 
     let summary = "";
     let relationships = [];
@@ -179,16 +160,18 @@ Deno.serve(async (req) => {
     if (summaryMatch && summaryMatch[1]) {
       summary = summaryMatch[1].trim();
     } else {
-      console.warn("Could not extract summary using regex. Using full text as summary.");
+      console.warn(
+        "Could not extract summary using regex. Using full text as summary."
+      );
       summary = fullText;
     }
 
-    const jsonMatch = fullText.match(jsonRegex);
-    if (jsonMatch && jsonMatch[1]) {
-      let jsonStr = jsonMatch[1];
+    const relationshipsMatch = fullText.match(relationshipsRegex);
+    if (relationshipsMatch && relationshipsMatch[1]) {
+      let jsonStr = relationshipsMatch[1];
 
       // Remove any unwanted characters before the first '{'
-      const firstCurly = jsonStr.indexOf('{');
+      const firstCurly = jsonStr.indexOf("{");
       if (firstCurly !== -1) {
         jsonStr = jsonStr.substring(firstCurly).trim();
       }
@@ -198,33 +181,40 @@ Deno.serve(async (req) => {
         if (Array.isArray(parsed.relationships)) {
           relationships = parsed.relationships;
         } else {
-          console.warn("Parsed JSON does not have a 'relationships' array:", parsed);
+          console.warn(
+            "Parsed JSON does not have a 'relationships' array:",
+            parsed
+          );
         }
       } catch (error) {
-        console.error('Error parsing relationships JSON:', error);
+        console.error("Error parsing relationships JSON:", error);
         return new Response(
           JSON.stringify({
-            error: 'Failed to parse relationships JSON',
+            error: "Failed to parse relationships JSON",
             details: error.message,
             raw_text: jsonStr,
           }),
           {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
           }
         );
       }
     } else {
-      console.warn("Could not extract relationships JSON using regex. Raw text:", fullText);
+      console.warn(
+        "Could not extract relationships JSON using regex. Raw text:",
+        fullText
+      );
     }
 
     // Validate relationships format
     relationships = relationships.filter(
       (rel) =>
         rel &&
-        typeof rel === 'object' &&
-        typeof rel.text === 'string' &&
-        typeof rel.type === 'string'
+        typeof rel === "object" &&
+        typeof rel.source === "string" &&
+        typeof rel.target === "string" &&
+        typeof rel.type === "string"
     );
 
     return new Response(
@@ -236,22 +226,23 @@ Deno.serve(async (req) => {
         status: 200,
         headers: {
           ...corsHeaders,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       }
     );
   } catch (error) {
-    console.error('Unexpected error:', error);
+    console.error("Unexpected error:", error);
     return new Response(
       JSON.stringify({
-        error: 'Unexpected error',
-        details: error instanceof Error ? error.message : 'An unknown error occurred',
+        error: "Unexpected error",
+        details:
+          error instanceof Error ? error.message : "An unknown error occurred",
       }),
       {
         status: 500,
         headers: {
           ...corsHeaders,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       }
     );
