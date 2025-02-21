@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useCallback, useState, useEffect } from 'react';
@@ -21,9 +20,14 @@ import {
   Panel,
   applyNodeChanges,
   applyEdgeChanges,
+  getRectOfNodes,
+  getTransformForBounds,
 } from '@xyflow/react';
+import { toPng } from 'html-to-image';
+import { jsPDF } from 'jspdf';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Download } from 'lucide-react';
 import HistoricalNode, { NodeType, HistoricalNodeData } from '../components/HistoricalNode';
 import { HistoricalEdge, HistoricalEdgeData } from '../components/HistoricalEdge';
 
@@ -137,52 +141,63 @@ export default function Flow() {
 
   const { highlights, removeHighlight } = useHighlightStore();
 
-  // Subscribe to analysis results
+  // Listen for node data updates
   useEffect(() => {
-    const handleAnalysisResults = (event: CustomEvent) => {
-      const { entities, relationships } = event.detail;
-      
-      // Create nodes for each entity
-      const newNodes: Node<HistoricalNodeData>[] = entities.map((entity: any, index: number) => ({
-        id: `entity-${index}`,
-        type: 'historical',
-        position: {
-          x: 100 + (index % 3) * 300,
-          y: 100 + Math.floor(index / 3) * 200,
-        },
-        data: {
-          type: entity.type.toLowerCase() as NodeType,
-          label: entity.text,
-          description: '',
-        },
-      }));
-
-      // Create edges for relationships
-      const newEdges: Edge<HistoricalEdgeData>[] = relationships.map((rel: any, index: number) => {
-        const sourceNode = newNodes.find(node => node.data.label === rel.source);
-        const targetNode = newNodes.find(node => node.data.label === rel.target);
-        
-        if (!sourceNode || !targetNode) return null;
-
-        return {
-          id: `edge-${index}`,
-          source: sourceNode.id,
-          target: targetNode.id,
-          type: 'historical',
-          data: {
-            type: rel.type.toLowerCase(),
-          },
-          animated: true,
-        };
-      }).filter(Boolean) as Edge<HistoricalEdgeData>[];
-
-      setNodes(newNodes);
-      setEdges(newEdges);
+    const handleNodeUpdate = (event: CustomEvent) => {
+      const { id, data } = event.detail;
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === id) {
+            return { ...node, data: { ...node.data, ...data } };
+          }
+          return node;
+        })
+      );
     };
 
-    window.addEventListener('analysisResults', handleAnalysisResults as EventListener);
-    return () => window.removeEventListener('analysisResults', handleAnalysisResults as EventListener);
+    window.addEventListener('updateNodeData', handleNodeUpdate as EventListener);
+    return () => window.removeEventListener('updateNodeData', handleNodeUpdate as EventListener);
   }, []);
+
+  const downloadAsPDF = useCallback(() => {
+    const nodesBounds = getRectOfNodes(nodes);
+    const transform = getTransformForBounds(
+      nodesBounds,
+      nodesBounds.width,
+      nodesBounds.height,
+      0.5,
+    );
+
+    const flowElement = document.querySelector('.react-flow') as HTMLElement;
+    if (!flowElement) return;
+
+    toPng(flowElement, {
+      backgroundColor: '#ffffff',
+      width: nodesBounds.width,
+      height: nodesBounds.height,
+      style: {
+        transform: `translate(${transform[0]}px, ${transform[1]}px) scale(${transform[2]})`,
+      },
+    })
+      .then((dataUrl) => {
+        const pdf = new jsPDF({
+          orientation: 'landscape',
+          unit: 'px',
+          format: [nodesBounds.width, nodesBounds.height],
+        });
+
+        pdf.addImage(
+          dataUrl,
+          'PNG',
+          0,
+          0,
+          nodesBounds.width,
+          nodesBounds.height,
+        );
+
+        pdf.save('historical-flow.pdf');
+      });
+  }, [nodes]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -275,6 +290,17 @@ export default function Flow() {
       >
         <Background />
         <Controls />
+        <Panel position="top-left" className="bg-background/50 backdrop-blur-sm p-2 rounded-lg">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={downloadAsPDF}
+            className="flex items-center gap-2"
+          >
+            <Download size={16} />
+            حفظ كـ PDF
+          </Button>
+        </Panel>
         {/* Node Creation Panel */}
         <Panel position="top-right" className="bg-background/50 backdrop-blur-sm p-4 rounded-lg w-80">
           <div className="space-y-4">
