@@ -12,6 +12,12 @@ import {
   BadgeDollarSign,
   Users,
   Palette,
+  BookOpen,
+  Clock,
+  Target,
+  BarChart2,
+  Globe,
+  HelpCircle,
 } from 'lucide-react';
 
 interface LeftPanelProps {
@@ -48,6 +54,51 @@ export function LeftPanel({ onAddNode }: LeftPanelProps) {
         >
           <Zap size={16} />
           إضافة سبب
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onAddNode('term')}
+          className="flex items-center gap-2"
+        >
+          <BookOpen size={16} />
+          إضافة مصطلح
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onAddNode('date')}
+          className="flex items-center gap-2"
+        >
+          <Clock size={16} />
+          إضافة تاريخ
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onAddNode('goal')}
+          className="flex items-center gap-2"
+        >
+          <Target size={16} />
+          إضافة هدف
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onAddNode('indicator')}
+          className="flex items-center gap-2"
+        >
+          <BarChart2 size={16} />
+          إضافة مؤشر
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onAddNode('country')}
+          className="flex items-center gap-2"
+        >
+          <Globe size={16} />
+          إضافة دولة
         </Button>
       </div>
 
@@ -89,6 +140,15 @@ export function LeftPanel({ onAddNode }: LeftPanelProps) {
         >
           <Palette size={16} />
           عامل ثقافي
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onAddNode('other')}
+          className="flex items-center gap-2"
+        >
+          <HelpCircle size={16} />
+          نوع آخر
         </Button>
       </div>
     </Panel>

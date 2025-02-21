@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useHighlightStore } from "../utils/highlightStore";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Analysis() {
   const [text, setText] = useState("");
@@ -26,41 +28,40 @@ export default function Analysis() {
 
     setIsLoading(true);
     try {
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text,
-          temperature: temperature[0],
-          autoHighlight,
-        }),
+      const { data, error } = await supabase.functions.invoke('analyze-text', {
+        body: { text },
       });
 
-      if (!response.ok) {
-        throw new Error("Analysis failed");
-      }
+      if (error) throw error;
 
-      const data = await response.json();
-      
-      if (autoHighlight && data.highlights) {
-        data.highlights.forEach((highlight: { text: string }) => {
-          addHighlight({
-            id: `highlight-${Date.now()}-${Math.random()}`,
-            text: highlight.text,
-          });
+      if (data.entities && data.relationships) {
+        // Dispatch a custom event with the analysis results
+        const event = new CustomEvent('analysisResults', {
+          detail: {
+            entities: data.entities,
+            relationships: data.relationships,
+          },
         });
-      }
+        window.dispatchEvent(event);
 
-      toast.success("Analysis complete!");
+        if (autoHighlight) {
+          data.entities.forEach((entity: { text: string }) => {
+            addHighlight({
+              id: `highlight-${Date.now()}-${Math.random()}`,
+              text: entity.text,
+            });
+          });
+        }
+
+        toast.success("Analysis complete!");
+      }
     } catch (error) {
       console.error("Analysis error:", error);
       toast.error("Failed to analyze text");
     } finally {
       setIsLoading(false);
     }
-  }, [text, temperature, autoHighlight, addHighlight]);
+  }, [text, autoHighlight, addHighlight]);
 
   return (
     <div className="space-y-4">

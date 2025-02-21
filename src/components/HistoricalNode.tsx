@@ -8,17 +8,27 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-// Define possible node types
-export type NodeType = 'event' | 'person' | 'cause' | 'political' | 'economic' | 'social' | 'cultural';
+export type NodeType = 
+  | 'event' 
+  | 'person' 
+  | 'cause' 
+  | 'political' 
+  | 'economic' 
+  | 'social' 
+  | 'cultural'
+  | 'term'
+  | 'date'
+  | 'goal'
+  | 'indicator'
+  | 'country'
+  | 'other';
 
-// Interface for node data
 export interface HistoricalNodeData extends Record<string, unknown> {
   label: string;
   type: NodeType;
   description?: string;
 }
 
-// Props interface for the component
 interface Props {
   data: HistoricalNodeData;
   isConnectable: boolean;
@@ -26,7 +36,6 @@ interface Props {
   selected: boolean;
 }
 
-// Icons for each node type
 const typeIcons: Record<NodeType, string> = {
   event: '📅',
   person: '👤',
@@ -35,9 +44,14 @@ const typeIcons: Record<NodeType, string> = {
   economic: '💰',
   social: '👥',
   cultural: '🎭',
+  term: '📖',
+  date: '⏰',
+  goal: '🎯',
+  indicator: '📊',
+  country: '🌍',
+  other: '❔',
 };
 
-// Labels for each node type (in Arabic)
 const typeLabels: Record<NodeType, string> = {
   event: 'حدث',
   person: 'شخصية',
@@ -46,9 +60,14 @@ const typeLabels: Record<NodeType, string> = {
   economic: 'اقتصادي',
   social: 'اجتماعي',
   cultural: 'ثقافي',
+  term: 'مصطلح',
+  date: 'تاريخ',
+  goal: 'هدف',
+  indicator: 'مؤشر',
+  country: 'دولة',
+  other: 'آخر',
 };
 
-// Colors for each node type
 const typeColors: Record<NodeType, { bg: string; border: string }> = {
   event: { bg: 'bg-blue-50', border: 'border-blue-200' },
   person: { bg: 'bg-green-50', border: 'border-green-200' },
@@ -57,15 +76,19 @@ const typeColors: Record<NodeType, { bg: string; border: string }> = {
   economic: { bg: 'bg-yellow-50', border: 'border-yellow-200' },
   social: { bg: 'bg-pink-50', border: 'border-pink-200' },
   cultural: { bg: 'bg-indigo-50', border: 'border-indigo-200' },
+  term: { bg: 'bg-slate-50', border: 'border-slate-200' },
+  date: { bg: 'bg-orange-50', border: 'border-orange-200' },
+  goal: { bg: 'bg-emerald-50', border: 'border-emerald-200' },
+  indicator: { bg: 'bg-cyan-50', border: 'border-cyan-200' },
+  country: { bg: 'bg-teal-50', border: 'border-teal-200' },
+  other: { bg: 'bg-gray-50', border: 'border-gray-200' },
 };
 
-// HistoricalNode component
 export default function HistoricalNode({ data, isConnectable, id, selected }: Props) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editedData, setEditedData] = useState<HistoricalNodeData>(data);
   const prevOpen = useRef(false);
 
-  // Reset editedData when the dialog opens
   useEffect(() => {
     if (!prevOpen.current && isDialogOpen) {
       setEditedData(data);
@@ -73,13 +96,11 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
     prevOpen.current = isDialogOpen;
   }, [isDialogOpen, data]);
 
-  // Handle double-click to open the dialog
   const handleDoubleClick = useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
     setIsDialogOpen(true);
   }, []);
 
-  // Handle saving edited data
   const handleSave = useCallback(() => {
     const event = new CustomEvent('updateNodeData', {
       detail: { id, data: editedData },
@@ -88,7 +109,6 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
     setIsDialogOpen(false);
   }, [id, editedData]);
 
-  // Check if data is provided
   if (!data) {
     return <div>خطأ: لم يتم توفير البيانات</div>;
   }
