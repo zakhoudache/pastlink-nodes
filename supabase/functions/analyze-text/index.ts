@@ -31,7 +31,7 @@ Deno.serve(async (req: any) => {
       - social
       - cultural
 
-      Format the relationships part in valid JSON like this example (ensure it's proper JSON format):
+      Format the relationships part exactly like this (keep the exact format):
       {
         "relationships": [
           {
@@ -44,8 +44,7 @@ Deno.serve(async (req: any) => {
       Text to analyze:
       ${text}
 
-      First provide the Arabic summary, then on a new line write exactly "RELATIONSHIPS_JSON:" followed by the JSON on the next line.
-      Ensure the JSON is properly formatted and valid.
+      First provide the Arabic summary, then on a new line write exactly "RELATIONSHIPS_JSON:" followed by ONLY the JSON object on the next line with no additional text or formatting.
     `;
 
     if (!GEMINI_API_KEY) {
@@ -88,29 +87,34 @@ Deno.serve(async (req: any) => {
     const fullText = data.candidates[0].content.parts[0].text;
     const [summary, relationshipsRaw] = fullText.split('RELATIONSHIPS_JSON:');
 
-    // More robust JSON extraction
+    // Enhanced JSON extraction and parsing
     let relationships = [];
     try {
       if (relationshipsRaw) {
-        // Clean up the JSON string
-        const jsonStr = relationshipsRaw
-          .replace(/```json\s*/g, '') // Remove JSON code block markers
-          .replace(/```\s*/g, '')     // Remove closing code block markers
-          .replace(/^json\s*/i, '')   // Remove "json" prefix
+        // More aggressive cleaning of the JSON string
+        let jsonStr = relationshipsRaw
+          .replace(/```json\s*/g, '')    // Remove JSON code block markers
+          .replace(/```\s*/g, '')        // Remove closing code block markers
+          .replace(/^[\s\n]*json[\s\n]*/i, '')  // Remove "json" prefix and surrounding whitespace
+          .replace(/^\s*\n+\s*/, '')     // Remove leading newlines and whitespace
           .trim();
 
-        // Try to find JSON object bounds
+        // Find the actual JSON object
         const startIdx = jsonStr.indexOf('{');
         const endIdx = jsonStr.lastIndexOf('}') + 1;
         
         if (startIdx >= 0 && endIdx > startIdx) {
           const cleanJson = jsonStr.slice(startIdx, endIdx);
+          
+          // Log the cleaned JSON for debugging
+          console.log('Attempting to parse JSON:', cleanJson);
+          
           const parsed = JSON.parse(cleanJson);
           
           if (Array.isArray(parsed.relationships)) {
             relationships = parsed.relationships;
           } else {
-            throw new Error('Invalid relationships structure');
+            throw new Error('Invalid relationships structure - expected array');
           }
         } else {
           throw new Error('Could not find valid JSON object bounds');
@@ -119,13 +123,27 @@ Deno.serve(async (req: any) => {
     } catch (e) {
       console.error('Error parsing relationships JSON:', e);
       console.log('Raw relationships text:', relationshipsRaw);
+      
+      // Attempt to extract just the relationships array if present
+      try {
+        const arrayMatch = relationshipsRaw.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (arrayMatch) {
+          const arrayJson = `{"relationships":${arrayMatch[0]}}`;
+          const parsed = JSON.parse(arrayJson);
+          relationships = parsed.relationships;
+        }
+      } catch (e2) {
+        console.error('Secondary parsing attempt failed:', e2);
+        // Continue with empty relationships array
+      }
+
+      // Return partial success with the summary
       return new Response(JSON.stringify({
-        error: 'Failed to parse relationships data',
-        details: e instanceof Error ? e.message : 'Unknown error',
-        summary: summary.trim(), // Still return the summary even if relationships parsing fails
-        relationships: [] // Return empty relationships array
+        summary: summary.trim(),
+        relationships,
+        warning: 'Relationships parsing may be incomplete'
       }), {
-        status: 200, // Return 200 since we still have useful data
+        status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
