@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useCallback, useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,6 +11,13 @@ import { useHighlightStore } from "../utils/highlightStore";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import RelationshipsTable from '../components/RelationshipsTable';
+
+interface Relationship {
+  source: string;
+  target: string;
+  type: string;
+}
 
 export default function Analysis() {
   const [text, setText] = useState("");
@@ -19,6 +25,7 @@ export default function Analysis() {
   const [temperature, setTemperature] = useState([0.9]);
   const [autoHighlight, setAutoHighlight] = useState(true);
   const { highlights, addHighlight } = useHighlightStore();
+  const [relationships, setRelationships] = useState<Relationship[]>([]);
 
   const analyzeText = useCallback(async () => {
     if (!text.trim()) {
@@ -33,6 +40,10 @@ export default function Analysis() {
       });
 
       if (error) throw error;
+
+      if (data.relationships) {
+        setRelationships(data.relationships);
+      }
 
       if (data.entities && data.relationships) {
         // Dispatch a custom event with the analysis results
@@ -66,7 +77,7 @@ export default function Analysis() {
     } finally {
       setIsLoading(false);
     }
-  }, [text, autoHighlight, addHighlight]);
+  }, [text, autoHighlight, addHighlight, setRelationships]);
 
   return (
     <div className="space-y-4">
@@ -136,6 +147,11 @@ export default function Analysis() {
         ) : (
           <p className="text-sm text-muted-foreground">No highlights yet</p>
         )}
+      </div>
+
+      <div>
+        <h3>Relationships</h3>
+        <RelationshipsTable relationships={relationships} />
       </div>
     </div>
   );

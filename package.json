@@ -5,11 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc --project supabase/functions/analyze-text/tsconfig.json && mv supabase/functions/analyze-text/index.js supabase/functions/analyze-text/index.cjs",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "build": "tsc --project supabase/functions/analyze-text/tsconfig.json && mv supabase/functions/analyze-text/index.js supabase/functions/analyze-text/index.cjs",
     "start": "npm run build && cd supabase/functions/analyze-text && node index.cjs"
   },
   "dependencies": {
@@ -76,8 +75,8 @@
     "@eslint/js": "^9.9.0",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^22.5.5",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react-swc": "^3.5.0",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.9.0",

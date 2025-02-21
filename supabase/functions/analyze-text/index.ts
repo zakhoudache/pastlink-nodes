@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
         {
           status: 400,
           headers: corsHeaders,
-        }
+        },
       );
     }
 
@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
         {
           status: 500,
           headers: corsHeaders,
-        }
+        },
       );
     }
 
@@ -54,17 +54,20 @@ ${ALTERNATIVE_PROMPT}
 النص لتحليله:
 ${text}
 
-يرجى تحليل النص واستخراج المعلومات التالية بالنص العادي. استخدم العلامتين RESULT_START: و RESULT_END: لاحتواء الإخراج النهائي.
+يرجى تحليل النص واستخراج العلاقات بين الكيانات. يجب أن يكون إخراجك بتنسيق JSON صالح، مع بنية تحتوي على مصفوفة من العلاقات. كل علاقة يجب أن تتضمن "source" (الكيان المصدر)، و "target" (الكيان الهدف)، و "type" (نوع العلاقة). لا تقم بتضمين أي نص أو شرح إضافي قبل أو بعد JSON.
 
-يجب أن يكون إخراجك بالتنسيق التالي:
-
-الكيانات:
-- كيان: [نص الكيان], النوع: [نوع الكيان], مرتبط بـ: [الكيان المرتبط 1; الكيان المرتبط 2; ...]
-
-العلاقات:
-- [الكيان المصدر] -> [الكيان الهدف], النوع: [نوع العلاقة]
-
-يرجى تقديم الإخراج كنص عادي فقط، بدون استخدام أي تنسيق برمجي أو أي مصطلحات تدل على تنسيق معين.
+مثال على الإخراج:
+\`\`\`json
+{
+  "relationships": [
+    {
+      "source": "[الكيان المصدر]",
+      "target": "[الكيان الهدف]",
+      "type": "[نوع العلاقة]"
+    }
+  ]
+}
+\`\`\`
 `;
 
     // Call Gemini API.
@@ -103,7 +106,7 @@ ${text}
         {
           status: 500,
           headers: corsHeaders,
-        }
+        },
       );
     }
     if (!response.ok) {
@@ -120,35 +123,53 @@ ${text}
         {
           status: 500,
           headers: corsHeaders,
-        }
+        },
       );
     }
 
     const fullText = data.candidates[0].content.parts[0].text;
 
-    // Extract the output between markers RESULT_START: and RESULT_END:
-    const startMarker = "RESULT_START:";
-    const endMarker = "RESULT_END:";
-    const startIndex = fullText.indexOf(startMarker);
-    const endIndex = fullText.lastIndexOf(endMarker);
-    if (startIndex === -1 || endIndex === -1) {
-      console.error("Could not find valid markers in output:", fullText);
+    // Use a regular expression to extract the JSON object from the response.
+    const jsonMatch = fullText.match(/```json\n(.*)\n```/s);
+    let jsonString: string | null = null;
+    if (jsonMatch) {
+      jsonString = jsonMatch[1];
+    } else {
+      console.error("Could not find JSON object in output:", fullText);
       return new Response(
-        "Error: Extraction error. Markers not found in API response.",
+        "Error: Extraction error. JSON object not found in API response.",
         {
           status: 500,
           headers: corsHeaders,
-        }
+        },
       );
     }
-    const extracted = fullText
-      .substring(startIndex + startMarker.length, endIndex)
-      .trim();
 
-    // Return the plain text output directly.
-    return new Response(extracted, {
+    // Parse the JSON object.
+    let jsonResponse: any;
+    if (jsonString) {
+      try {
+        jsonResponse = JSON.parse(jsonString);
+      } catch (error) {
+        console.error("Error parsing JSON object:", error);
+        console.error("JSON string:", jsonString);
+        return new Response("Error: API error. Failed to parse JSON object.", {
+          status: 500,
+          headers: corsHeaders,
+        });
+      }
+    } else {
+      console.error("JSON string is null");
+      return new Response("Error: API error. JSON string is null.", {
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
+
+    // Return the JSON object as a JSON response.
+    return new Response(JSON.stringify(jsonResponse), {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "text/plain" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Unexpected error:", error);
@@ -159,7 +180,7 @@ ${text}
       {
         status: 500,
         headers: corsHeaders,
-      }
+      },
     );
   }
 });
