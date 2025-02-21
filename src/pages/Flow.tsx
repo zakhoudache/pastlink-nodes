@@ -25,7 +25,7 @@ export default function Flow() {
   return (
     <div className="h-screen" dir="rtl">
       <h2 className="text-2xl font-bold mb-4">مخطط العلاقات التاريخية</h2>
-      <div className="h-[calc(100%-2rem)] border rounded-lg overflow-hidden">
+      <div className="h-[calc(100%-2rem)] border rounded-lg overflow-hidden relative">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -34,9 +34,13 @@ export default function Flow() {
           onConnect={onConnect}
           nodeTypes={nodeTypes}
           fitView
+          proOptions={{ hideAttribution: true }}
         >
           <Background />
-          <Controls />
+          <Controls 
+            position="bottom-right"
+            className="!bottom-4 !right-4"
+          />
           <MiniMap />
         </ReactFlow>
       </div>
