@@ -1,34 +1,29 @@
 
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useHighlightStore } from '../utils/highlightStore';
 import '@xyflow/react/dist/style.css';
-import { ReactFlow, EdgeTypes, MarkerType,
+import {
+  ReactFlow,
+  EdgeTypes,
+  MarkerType,
   Background,
   Controls,
   Edge,
   Node,
-  NodeChange,
   Connection,
-  EdgeChange,
-  addEdge,
-  applyNodeChanges,
-  applyEdgeChanges,
   Panel,
+  useNodesState,
+  useEdgesState,
 } from '@xyflow/react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import HistoricalNode, { NodeType, HistoricalNodeData } from '../components/HistoricalNode';
-import { HistoricalEdge } from '../components/HistoricalEdge';
-
-interface EdgeData {
-  type: string;
-  customLabel?: string;
-}
+import { HistoricalEdge, HistoricalEdgeData } from '../components/HistoricalEdge';
 
 interface EdgeDialogProps {
   isOpen: boolean;
@@ -43,7 +38,7 @@ const edgeTypes: EdgeTypes = {
 };
 
 const defaultEdgeOptions = {
-  type: 'historical',
+  type: 'historical' as const,
   markerEnd: {
     type: MarkerType.ArrowClosed,
     width: 20,
@@ -56,7 +51,7 @@ const nodeTypes = {
 };
 
 const initialNodes: Node<HistoricalNodeData>[] = [];
-const initialEdges: Edge[] = [];
+const initialEdges: Edge<HistoricalEdgeData>[] = [];
 
 const relationshipTypes = [
   'Caused by',
@@ -78,8 +73,8 @@ const getNodePosition = (nodes: Node[]): { x: number; y: number } => {
 };
 
 function EdgeDialog({ isOpen, onClose, onConfirm, defaultType, defaultLabel }: EdgeDialogProps) {
-  const [customLabel, setCustomLabel] = useState(defaultLabel);
-  const [selectedType, setSelectedType] = useState(defaultType);
+  const [customLabel, setCustomLabel] = React.useState(defaultLabel);
+  const [selectedType, setSelectedType] = React.useState(defaultType);
 
   const handleConfirm = (type: string, customLabel?: string) => {
     onConfirm(type, customLabel);
@@ -134,23 +129,13 @@ function EdgeDialog({ isOpen, onClose, onConfirm, defaultType, defaultLabel }: E
 }
 
 export default function Flow() {
-  const [nodes, setNodes] = useState<Node<HistoricalNodeData>[]>(initialNodes);
-  const [edges, setEdges] = useState<Edge[]>(initialEdges);
-  const [isEdgeDialogOpen, setIsEdgeDialogOpen] = useState(false);
-  const [edgeSourceNode, setEdgeSourceNode] = useState<string | null>(null);
-  const [edgeTargetNode, setEdgeTargetNode] = useState<string | null>(null);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<HistoricalNodeData>>(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge<HistoricalEdgeData>>(initialEdges);
+  const [isEdgeDialogOpen, setIsEdgeDialogOpen] = React.useState(false);
+  const [edgeSourceNode, setEdgeSourceNode] = React.useState<string | null>(null);
+  const [edgeTargetNode, setEdgeTargetNode] = React.useState<string | null>(null);
 
   const { highlights, removeHighlight } = useHighlightStore();
-
-  const onNodesChange = useCallback(
-    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
-    []
-  );
-
-  const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-    []
-  );
 
   const onConnect = useCallback((params: Connection) => {
     setEdgeSourceNode(params.source || null);
@@ -162,7 +147,7 @@ export default function Flow() {
     if (!edgeSourceNode || !edgeTargetNode) return;
 
     const edgeId = `e${edgeSourceNode}-${edgeTargetNode}`;
-    const newEdge: Edge = {
+    const newEdge: Edge<HistoricalEdgeData> = {
       id: edgeId,
       source: edgeSourceNode,
       target: edgeTargetNode,
@@ -175,7 +160,7 @@ export default function Flow() {
     setEdgeSourceNode(null);
     setEdgeTargetNode(null);
     setIsEdgeDialogOpen(false);
-  }, [edgeSourceNode, edgeTargetNode]);
+  }, [edgeSourceNode, edgeTargetNode, setEdges]);
 
   const createNodeFromHighlight = useCallback((highlight: { id: string; text: string }, type: NodeType) => {
     const position = getNodePosition(nodes);
@@ -192,7 +177,7 @@ export default function Flow() {
 
     setNodes((nds) => [...nds, newNode]);
     removeHighlight(highlight.id);
-  }, [nodes, removeHighlight]);
+  }, [nodes, removeHighlight, setNodes]);
 
   const addNode = useCallback((type: NodeType) => {
     const newNode: Node<HistoricalNodeData> = {
@@ -207,7 +192,7 @@ export default function Flow() {
     };
 
     setNodes((nds) => [...nds, newNode]);
-  }, [nodes]);
+  }, [nodes, setNodes]);
 
   return (
     <div className="h-screen w-full">
