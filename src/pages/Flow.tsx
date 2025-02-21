@@ -77,6 +77,39 @@ const getNodePosition = (nodes: Node[]): { x: number; y: number } => {
   };
 };
 
+// Custom function to calculate the bounding rectangle of nodes
+const getNodesBounds = (nodes: Node[]): { x: number; y: number; width: number; height: number } => {
+  if (nodes.length === 0) {
+    return { x: 0, y: 0, width: 0, height: 0 };
+  }
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  nodes.forEach((node) => {
+    const x = node.position.x;
+    const y = node.position.y;
+    // Use node.width and node.height if available; otherwise, assume defaults
+    const width = node.width || 240; // e.g., 'w-60' in Tailwind is 240px
+    const height = node.height || 100; // Adjust based on your node design
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + width);
+    maxY = Math.max(maxY, y + height);
+  });
+
+  // Add padding to ensure all nodes are captured
+  const padding = 50;
+  return {
+    x: minX - padding,
+    y: minY - padding,
+    width: maxX - minX + 2 * padding,
+    height: maxY - minY + 2 * padding,
+  };
+};
+
 function EdgeDialog({ isOpen, onClose, onConfirm, defaultType = 'related-to', defaultLabel }: EdgeDialogProps) {
   const [customLabel, setCustomLabel] = useState<string | undefined>(defaultLabel);
   const [selectedType, setSelectedType] = useState<string>(defaultType);
@@ -131,104 +164,54 @@ function EdgeDialog({ isOpen, onClose, onConfirm, defaultType = 'related-to', de
   );
 }
 
-// Custom function to calculate the bounding rectangle of nodes
-const getNodesBounds = (nodes: Node[]): { x: number; y: number; width: number; height: number } => {
-  if (nodes.length === 0) {
-    return { x: 0, y: 0, width: 0, height: 0 };
-  }
-
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-
-  nodes.forEach((node) => {
-    const x = node.position.x;
-    const y = node.position.y;
-    minX = Math.min(minX, x);
-    minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x);
-    maxY = Math.max(maxY, y);
-  });
-
-  // Add padding and estimated node dimensions
-  const padding = 50;
-  const assumedNodeWidth = 240; // Based on w-60 (240px)
-  const assumedNodeHeight = 100; // Estimate; adjust based on your nodes
-
-  return {
-    x: minX - padding,
-    y: minY - padding,
-    width: maxX - minX + assumedNodeWidth + 2 * padding,
-    height: maxY - minY + assumedNodeHeight + 2 * padding,
-  };
-};
-
 export default function Flow() {
-  const [nodes, setNodes] = useState<Node<HistoricalNodeData>[]>([]);
-  const [edges, setEdges] = useState<Edge<HistoricalEdgeData>[]>([]);
+  const [isMounted, setIsMounted] = useState(false);
+  const [nodes, setNodes] = useState<Node<HistoricalNodeData>[]>(initialNodes);
+  const [edges, setEdges] = useState<Edge<HistoricalEdgeData>[]>(initialEdges);
   const [isEdgeDialogOpen, setIsEdgeDialogOpen] = useState(false);
   const [edgeSourceNode, setEdgeSourceNode] = useState<string | null>(null);
   const [edgeTargetNode, setEdgeTargetNode] = useState<string | null>(null);
 
   const { highlights, removeHighlight } = useHighlightStore();
 
-  // Listen for node data updates
   useEffect(() => {
-    const handleNodeUpdate = (event: CustomEvent) => {
-      const { id, data } = event.detail;
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleNodeUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent<{ id: string; data: HistoricalNodeData }>;
+      const { id, data } = customEvent.detail;
       setNodes((nds) =>
-        nds.map((node) => {
-          if (node.id === id) {
-            return { ...node, data: { ...node.data, ...data } };
-          }
-          return node;
-        })
+        nds.map((node) => (node.id === id ? { ...node, data } : node))
       );
     };
 
-    window.addEventListener('updateNodeData', handleNodeUpdate as EventListener);
-    return () => window.removeEventListener('updateNodeData', handleNodeUpdate as EventListener);
+    window.addEventListener('updateNodeData', handleNodeUpdate);
+    return () => window.removeEventListener('updateNodeData', handleNodeUpdate);
   }, []);
 
   const downloadAsPDF = useCallback(() => {
+    if (nodes.length === 0) return;
     const nodesBounds = getNodesBounds(nodes);
-    const transform = getTransformForBounds(
-      nodesBounds,
-      nodesBounds.width,
-      nodesBounds.height,
-      0.5,
-    );
-
-    const flowElement = document.querySelector('.react-flow') as HTMLElement;
+    const transform = getTransformForBounds(nodesBounds, nodesBounds.width, nodesBounds.height, 0.5);
+    const flowElement = document.querySelector('.react-flow') as HTMLElement | null;
     if (!flowElement) return;
 
     toPng(flowElement, {
       backgroundColor: '#ffffff',
       width: nodesBounds.width,
       height: nodesBounds.height,
-      style: {
-        transform: `translate(${transform[0]}px, ${transform[1]}px) scale(${transform[2]})`,
-      },
-    })
-      .then((dataUrl) => {
-        const pdf = new jsPDF({
-          orientation: 'landscape',
-          unit: 'px',
-          format: [nodesBounds.width, nodesBounds.height],
-        });
-
-        pdf.addImage(
-          dataUrl,
-          'PNG',
-          0,
-          0,
-          nodesBounds.width,
-          nodesBounds.height,
-        );
-
-        pdf.save('historical-flow.pdf');
+      style: { transform: `translate(${transform[0]}px, ${transform[1]}px) scale(${transform[2]})` },
+    }).then((dataUrl) => {
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [nodesBounds.width, nodesBounds.height],
       });
+      pdf.addImage(dataUrl, 'PNG', 0, 0, nodesBounds.width, nodesBounds.height);
+      pdf.save('historical-flow.pdf');
+    });
   }, [nodes]);
 
   const onNodesChange = useCallback(
@@ -242,15 +225,16 @@ export default function Flow() {
   );
 
   const onConnect = useCallback((params: Connection) => {
-    setEdgeSourceNode(params.source || null);
-    setEdgeTargetNode(params.target || null);
-    setIsEdgeDialogOpen(true);
+    if (params.source && params.target) {
+      setEdgeSourceNode(params.source);
+      setEdgeTargetNode(params.target);
+      setIsEdgeDialogOpen(true);
+    }
   }, []);
 
   const handleEdgeComplete = useCallback(
     (type: string, customLabel?: string) => {
       if (!edgeSourceNode || !edgeTargetNode) return;
-
       const edgeId = `e${edgeSourceNode}-${edgeTargetNode}`;
       const newEdge: Edge<HistoricalEdgeData> = {
         id: edgeId,
@@ -260,7 +244,6 @@ export default function Flow() {
         data: { type, customLabel },
         animated: true,
       };
-
       setEdges((eds) => [...eds, newEdge]);
       setEdgeSourceNode(null);
       setEdgeTargetNode(null);
@@ -276,13 +259,8 @@ export default function Flow() {
         id: highlight.id,
         type: 'historical',
         position,
-        data: {
-          type,
-          label: highlight.text,
-          description: '',
-        },
+        data: { type, label: highlight.text, description: '' },
       };
-
       setNodes((nds) => [...nds, newNode]);
       removeHighlight(highlight.id);
     },
@@ -295,26 +273,23 @@ export default function Flow() {
         id: `${Date.now()}`,
         type: 'historical',
         position: getNodePosition(nodes),
-        data: {
-          type,
-          label: `New ${type}`,
-          description: `Description for new ${type}`,
-        },
+        data: { type, label: `New ${type}`, description: `Description for new ${type}` },
       };
-
       setNodes((nds) => [...nds, newNode]);
     },
     [nodes]
   );
+
+  if (!isMounted) return null;
 
   return (
     <div className="h-screen w-full">
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onNodesChange={onNodesChange}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
@@ -323,17 +298,11 @@ export default function Flow() {
         <Background />
         <Controls />
         <Panel position="top-left" className="bg-background/50 backdrop-blur-sm p-2 rounded-lg">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={downloadAsPDF}
-            className="flex items-center gap-2"
-          >
+          <Button variant="outline" size="sm" onClick={downloadAsPDF} className="flex items-center gap-2">
             <Download size={16} />
             حفظ كـ PDF
           </Button>
         </Panel>
-        {/* Node Creation Panel */}
         <Panel position="top-right" className="bg-background/50 backdrop-blur-sm p-4 rounded-lg w-80">
           <div className="space-y-4">
             <h3 className="font-semibold">Highlighted Passages</h3>
@@ -414,7 +383,6 @@ export default function Flow() {
             )}
           </div>
         </Panel>
-        {/* Node Types Panel */}
         <Panel position="top-left" className="bg-background/50 backdrop-blur-sm p-2 rounded-lg">
           <div className="flex flex-col gap-2">
             <Button
