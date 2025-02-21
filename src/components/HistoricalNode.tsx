@@ -1,3 +1,4 @@
+
 import { Handle, Position } from '@xyflow/react';
 import { Card } from '@/components/ui/card';
 
@@ -24,6 +25,16 @@ const typeIcons: Record<NodeType, string> = {
   cultural: '🎭',
 };
 
+const typeLabels: Record<NodeType, string> = {
+  event: 'حدث',
+  person: 'شخصية',
+  cause: 'سبب',
+  political: 'سياسي',
+  economic: 'اقتصادي',
+  social: 'اجتماعي',
+  cultural: 'ثقافي',
+};
+
 const typeColors: Record<NodeType, { bg: string; border: string }> = {
   event: { bg: 'bg-blue-50', border: 'border-blue-200' },
   person: { bg: 'bg-green-50', border: 'border-green-200' },
@@ -35,18 +46,15 @@ const typeColors: Record<NodeType, { bg: string; border: string }> = {
 };
 
 export default function HistoricalNode({ data, isConnectable }: Props) {
-  // Ensure data is properly passed
   if (!data) {
-    return <div>Error: No data provided</div>;
+    return <div>خطأ: لم يتم توفير البيانات</div>;
   }
 
   const { type, label, description } = data;
-
-  // Safely get color or fallback to a default color
   const colors = typeColors[type] || { bg: 'bg-gray-50', border: 'border-gray-200' };
 
   return (
-    <Card className={`w-60 shadow-sm ${colors.bg} ${colors.border} border-2`}>
+    <Card className={`w-60 shadow-sm ${colors.bg} ${colors.border} border-2`} dir="rtl">
       <Handle
         type="target"
         position={Position.Top}
@@ -55,12 +63,12 @@ export default function HistoricalNode({ data, isConnectable }: Props) {
       />
       <div className="p-3">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xl" role="img" aria-label={type}>
+          <span className="text-xl" role="img" aria-label={typeLabels[type]}>
             {typeIcons[type]}
           </span>
           <div>
-            <div className="text-xs font-medium text-muted-foreground capitalize">
-              {type}
+            <div className="text-xs font-medium text-muted-foreground">
+              {typeLabels[type]}
             </div>
             <div className="font-medium">{label}</div>
           </div>

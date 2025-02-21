@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCallback, useState, useEffect } from "react";
@@ -9,7 +10,6 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 
-// Custom extension to handle our highlighting
 const CustomHighlight = Highlight.configure({
   multicolor: true,
 });
@@ -25,16 +25,16 @@ export default function Analysis() {
     }
   }, []);
 
-
   const editor = useEditor({
     onCreate: () => setIsReady(true),
     extensions: [StarterKit, CustomHighlight],
-    content: `<h2>Welcome to HistoFlow</h2>
-<p>Start by pasting your historical text here. Then, select important passages to highlight them and create nodes for analysis.</p>
-<p>Try selecting this text to see how highlighting works!</p>`,
+    content: `<h2>مرحباً بك في نظام تحليل النصوص التاريخية</h2>
+<p>ابدأ بنسخ النص التاريخي هنا. ثم قم بتحديد المقاطع المهمة لتمييزها وإنشاء العقد للتحليل.</p>
+<p>جرب تحديد هذا النص لترى كيف يعمل التمييز!</p>`,
     editorProps: {
       attributes: {
         class: 'outline-none',
+        dir: 'rtl',
       },
     },
     onSelectionUpdate: ({ editor }) => {
@@ -54,18 +54,18 @@ export default function Analysis() {
   });
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background" dir="rtl">
       {/* Main content area */}
       <div className="flex-1 flex flex-col p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Historical Text Analysis</h1>
-          <p className="text-sm text-muted-foreground">{highlights.length} highlights</p>
+          <h1 className="text-3xl font-bold">تحليل النص التاريخي</h1>
+          <p className="text-sm text-muted-foreground">عدد التمييزات: {highlights.length}</p>
         </div>
 
         <Card className="flex-1 p-6">
           {!isReady ? (
             <div className="h-full flex items-center justify-center">
-              <p className="text-muted-foreground">Loading editor...</p>
+              <p className="text-muted-foreground">جاري تحميل المحرر...</p>
             </div>
           ) : (
             <EditorContent
@@ -77,13 +77,13 @@ export default function Analysis() {
       </div>
 
       {/* Sidebar */}
-      <div className="w-80 border-l bg-muted/10 p-6">
-        <h2 className="font-semibold mb-4">Highlighted Passages</h2>
+      <div className="w-80 border-r bg-muted/10 p-6">
+        <h2 className="font-semibold mb-4">المقاطع المميزة</h2>
         <Separator className="mb-4" />
         <ScrollArea className="h-[calc(100vh-10rem)]">
           {highlights.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No highlights yet. Select text and use the highlight tool to add passages.
+              لا توجد تمييزات حتى الآن. حدد النص واستخدم أداة التمييز لإضافة المقاطع.
             </p>
           ) : (
             <div className="space-y-4">
