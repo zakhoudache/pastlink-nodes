@@ -66,6 +66,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Modified prompt with explicit markers for summary and JSON output.
     const prompt = `
       Please analyze the following historical text and provide a comprehensive summary in Arabic that:
       1. يحدد الأحداث والشخصيات والمفاهيم الرئيسية
@@ -73,8 +74,16 @@ Deno.serve(async (req) => {
       3. يسلط الضوء على الأسباب والنتائج الرئيسية
       4. يناقش العوامل السياسية والاقتصادية والاجتماعية والثقافية
 
-      After the summary, on a new line write "RELATIONSHIPS_JSON:" followed by a JSON object containing relationships found in the text. The JSON must be a valid object with a "relationships" array. Do not include any other text or formatting around the JSON object, including markdown.
-      Start the JSON object immediately after the colon without any leading text or spaces.
+      Your output must strictly follow this format:
+
+      SUMMARY_START:
+      [Your summary in Arabic here]
+      SUMMARY_END:
+      RELATIONSHIPS_JSON_START:
+      {"relationships": [{"text": "example", "type": "example"}]}
+      RELATIONSHIPS_JSON_END:
+
+      Do not include any extra text or formatting outside these markers.
 
       Text to analyze:
       ${text}
@@ -156,16 +165,26 @@ Deno.serve(async (req) => {
 
     const fullText = data.candidates[0].content.parts[0].text;
 
-    // Use regex to extract the JSON block that follows the marker
-    const regex = /RELATIONSHIPS_JSON:\s*({[\s\S]*})/;
-    const match = fullText.match(regex);
+    // Use regex to extract the summary and the JSON block
+    const summaryRegex = /SUMMARY_START:\s*([\s\S]*?)\s*SUMMARY_END:/;
+    const jsonRegex = /RELATIONSHIPS_JSON_START:\s*({[\s\S]*?})\s*RELATIONSHIPS_JSON_END:/;
+
+    let summary = "";
     let relationships = [];
-    let summary = fullText;
 
-    if (match && match[1]) {
-      let jsonStr = match[1];
+    const summaryMatch = fullText.match(summaryRegex);
+    if (summaryMatch && summaryMatch[1]) {
+      summary = summaryMatch[1].trim();
+    } else {
+      console.warn("Could not extract summary using regex. Using full text as summary.");
+      summary = fullText;
+    }
 
-      // Remove any unwanted prefixes (e.g. "json" or newlines) before the first '{'
+    const jsonMatch = fullText.match(jsonRegex);
+    if (jsonMatch && jsonMatch[1]) {
+      let jsonStr = jsonMatch[1];
+
+      // Remove any unwanted characters before the first '{'
       const firstCurly = jsonStr.indexOf('{');
       if (firstCurly !== -1) {
         jsonStr = jsonStr.substring(firstCurly);
@@ -192,10 +211,8 @@ Deno.serve(async (req) => {
           }
         );
       }
-      // Remove the JSON block from the summary
-      summary = fullText.replace(regex, '').trim();
     } else {
-      console.warn("Could not extract JSON using regex. Raw text:", fullText);
+      console.warn("Could not extract relationships JSON using regex. Raw text:", fullText);
     }
 
     // Validate relationships format
@@ -209,7 +226,7 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        summary: summary.trim(),
+        summary,
         relationships,
       }),
       {
