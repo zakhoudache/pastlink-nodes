@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 
 interface Entity {
@@ -22,7 +21,9 @@ Your task is to:
 2. Classify each entity into one of these types: event, person, cause, political, economic, social, cultural
 3. Identify relationships between entities
 
-Return the response in this exact JSON format:
+Return the response in the following format exactly (do not include any extra text):
+
+RESULT_START:
 {
   "entities": [
     { "text": "entity text", "type": "type of entity", "relatedTo": ["related entity texts"] }
@@ -30,7 +31,8 @@ Return the response in this exact JSON format:
   "relationships": [
     { "source": "source entity text", "target": "target entity text", "type": "relationship type" }
   ]
-}`;
+}
+RESULT_END:`;
 
 export async function analyzeText(text: string): Promise<EntityAnalysisResponse> {
   const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
@@ -49,15 +51,38 @@ export async function analyzeText(text: string): Promise<EntityAnalysisResponse>
   });
 
   if (!response.ok) {
+    const errText = await response.text();
+    console.error('API error response:', errText);
     throw new Error('Failed to analyze text');
   }
 
   const data = await response.json();
+
+  // Validate structure
+  if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
+    console.error('Unexpected API response structure:', data);
+    throw new Error('Invalid API response structure');
+  }
+
+  const rawOutput = data.candidates[0].content.parts[0].text;
+
+  // Extract JSON between markers RESULT_START: and RESULT_END:
+  const regex = /RESULT_START:\s*([\s\S]*?)\s*RESULT_END:/;
+  const match = rawOutput.match(regex);
+  let jsonStr = '';
+  if (match && match[1]) {
+    jsonStr = match[1].trim();
+  } else {
+    console.error('Could not extract JSON using markers. Raw output:', rawOutput);
+    throw new Error('Failed to extract JSON from analysis results');
+  }
+
   try {
-    const result = JSON.parse(data.candidates[0].content.parts[0].text);
+    const result = JSON.parse(jsonStr);
     return result;
   } catch (error) {
-    console.error('Error parsing Gemini response:', error);
+    console.error('Error parsing extracted JSON:', error);
+    console.error('Extracted JSON string:', jsonStr);
     throw new Error('Failed to parse analysis results');
   }
 }
