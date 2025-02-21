@@ -163,7 +163,13 @@ Deno.serve(async (req) => {
     let summary = fullText;
 
     if (match && match[1]) {
-      const jsonStr = match[1];
+      let jsonStr = match[1];
+
+      // Remove any unwanted prefixes like "json" if present
+      if (jsonStr.trim().toLowerCase().startsWith("json")) {
+        jsonStr = jsonStr.trim().replace(/^json\s*/i, '');
+      }
+
       try {
         const parsed = JSON.parse(jsonStr);
         if (Array.isArray(parsed.relationships)) {
