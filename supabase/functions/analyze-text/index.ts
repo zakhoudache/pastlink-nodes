@@ -1,54 +1,70 @@
 import { corsHeaders } from '../shared-one/cors';
+import { createClient } from '@supabase/supabase-js';
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
-// Advanced JSON parsing utility
-function parseLooseJSON(text: string) {
-  // Remove any prefix before the first {
-  const jsonStart = text.indexOf('{');
-  if (jsonStart === -1) return null;
-  
-  text = text.slice(jsonStart);
-  
-  // Remove any suffix after the last }
-  const jsonEnd = text.lastIndexOf('}');
-  if (jsonEnd === -1) return null;
-  
-  text = text.slice(0, jsonEnd + 1);
-  
-  try {
-    // First try direct parsing
-    return JSON.parse(text);
-  } catch (e) {
-    try {
-      // Try fixing common issues
-      text = text
-        // Fix line breaks inside strings
-        .replace(/(?<!\\)\\n/g, '\\n')
-        // Fix unescaped quotes inside strings
-        .replace(/(?<!\\)"/g, '\\"')
-        // Fix trailing commas
-        .replace(/,(\s*[}\]])/g, '$1');
-      
-      return JSON.parse(text);
-    } catch (e2) {
-      return null;
-    }
-  }
-}
-
-Deno.serve(async (req: any) => {
+Deno.serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, {
-      status: 204,
-      headers: corsHeaders,
+      headers: {
+        ...corsHeaders,
+        'Access-Control-Max-Age': '86400',
+      }
     });
   }
 
   try {
-    const { text } = await req.json();
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (error) {
+      console.error('Error parsing request body:', error);
+      return new Response(
+        JSON.stringify({
+          error: 'Invalid request body',
+          details: 'Failed to parse JSON'
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    const { text } = requestBody;
+
+    // Validate required fields
+    if (!text) {
+      console.error('Missing required text field');
+      return new Response(
+        JSON.stringify({
+          error: 'Missing required fields',
+          details: 'Text field is required'
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Check for API key
+    if (!GEMINI_API_KEY) {
+      console.error('Missing Gemini API key');
+      return new Response(
+        JSON.stringify({
+          error: 'Server configuration error',
+          details: 'Missing API key'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
 
     const prompt = `
       Please analyze the following historical text and provide a comprehensive summary in Arabic that:
@@ -65,59 +81,106 @@ Deno.serve(async (req: any) => {
       ${text}
     `;
 
-    if (!GEMINI_API_KEY) {
-      throw new Error('Gemini API key is not set');
-    }
-
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+    // Call Gemini API
+    const response = await fetch(GEMINI_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.9,
+          topK: 1,
+          topP: 1,
+          maxOutputTokens: 2048,
+          stopSequences: []
+        },
+        safetySettings: [{
+          category: "HARM_CATEGORY_HARASSMENT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE"
+        }]
+      })
     });
 
-    const data = await response.json();
-    
+    // Handle Gemini API response
+    let data;
+    try {
+      data = await response.json();
+    } catch (error) {
+      console.error('Error parsing Gemini API response:', error);
+      return new Response(
+        JSON.stringify({
+          error: 'API error',
+          details: 'Failed to parse Gemini API response'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
     if (!response.ok) {
-      throw new Error(`Gemini API error: ${data.error?.message || 'Unknown error'}`);
+      console.error('Gemini API error:', data);
+      return new Response(
+        JSON.stringify({
+          error: 'API error',
+          details: 'Error calling Gemini API'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      throw new Error('Invalid response format from Gemini API');
+      console.error('Invalid Gemini API response structure:', data);
+      return new Response(
+        JSON.stringify({
+          error: 'API error',
+          details: 'Invalid response structure from Gemini API'
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     const fullText = data.candidates[0].content.parts[0].text;
     const [summary, relationshipsRaw] = fullText.split('RELATIONSHIPS_JSON:');
 
-    // Process relationships with enhanced error handling
+    // Process relationships
     let relationships = [];
     if (relationshipsRaw) {
-      // Clean up the raw text
-      const cleanedText = relationshipsRaw
-        .replace(/```json/g, '')
-        .replace(/```/g, '')
-        .replace(/^json/m, '')
-        .trim();
+      try {
+        // Clean the JSON string
+        const cleanedText = relationshipsRaw
+          .replace(/```json/g, '')
+          .replace(/```/g, '')
+          .replace(/^[\s\n]*json[\s\n]*/i, '')
+          .trim();
 
-      console.log('Attempting to parse JSON from:', cleanedText);
-
-      // Try parsing with our robust parser
-      const parsedJson = parseLooseJSON(cleanedText);
-      
-      if (parsedJson && Array.isArray(parsedJson.relationships)) {
-        relationships = parsedJson.relationships;
-      } else {
-        // Fallback: try to find and parse just the relationships array
-        const arrayMatch = cleanedText.match(/\[\s*{[\s\S]*}\s*\]/);
-        if (arrayMatch) {
-          try {
-            const arrayJson = `{"relationships":${arrayMatch[0]}}`;
-            const parsed = JSON.parse(arrayJson);
+        // Find the JSON object bounds
+        const startIdx = cleanedText.indexOf('{');
+        const endIdx = cleanedText.lastIndexOf('}') + 1;
+        
+        if (startIdx >= 0 && endIdx > startIdx) {
+          const jsonStr = cleanedText.slice(startIdx, endIdx);
+          const parsed = JSON.parse(jsonStr);
+          
+          if (Array.isArray(parsed.relationships)) {
             relationships = parsed.relationships;
-          } catch (e) {
-            console.error('Fallback parsing failed:', e);
-            relationships = [];
           }
         }
+      } catch (error) {
+        console.error('Error parsing relationships JSON:', error);
+        console.log('Raw relationships text:', relationshipsRaw);
+        // Continue with empty relationships array
       }
     }
 
@@ -130,30 +193,32 @@ Deno.serve(async (req: any) => {
     );
 
     return new Response(
-      JSON.stringify({ 
-        summary: summary.trim(), 
-        relationships,
-        parsed: relationships.length > 0
-      }), {
+      JSON.stringify({
+        summary: summary.trim(),
+        relationships
+      }),
+      {
         status: 200,
-        headers: { 
-          "Content-Type": "application/json",
-          ...corsHeaders
-        },
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
       }
     );
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Unexpected error:', error);
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }), {
+      JSON.stringify({
+        error: 'Unexpected error',
+        details: error instanceof Error ? error.message : 'An unknown error occurred'
+      }),
+      {
         status: 500,
-        headers: { 
-          "Content-Type": "application/json",
-          ...corsHeaders
-        },
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
       }
     );
   }
