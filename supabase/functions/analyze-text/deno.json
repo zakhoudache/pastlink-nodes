@@ -1,8 +1,0 @@
-{
-  "imports": {
-    "cors": "../shared-one/cors.ts"
-  },
-  "compilerOptions": {
-    "lib": ["deno.ns", "dom"]
-  }
-}

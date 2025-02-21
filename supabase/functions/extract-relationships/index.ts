@@ -3,8 +3,6 @@ const { corsHeaders } = require("../shared-one/cors");
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
 const server = http.createServer(async (req: any, res: any) => {
   if (req.method === "OPTIONS") {
@@ -36,13 +34,15 @@ const server = http.createServer(async (req: any, res: any) => {
 
       // Simplified prompt that requests exact JSON structure
       const prompt = `
-Analyze the following Arabic text and extract the main entities.
+Analyze the following Arabic text and extract relationships between entities. 
 Return ONLY a JSON object with the following structure, no other text:
 {
-  "entities": [
-    "entity1",
-    "entity2",
-    ...
+  "relationships": [
+    {
+      "source": "entity1",
+      "target": "entity2",
+      "type": "relationship type"
+    }
   ]
 }
 
@@ -86,38 +86,20 @@ ${text}
         const jsonResponse = JSON.parse(geminiResponseText);
 
         // Validate the response structure
-        if (!Array.isArray(jsonResponse.entities)) {
-          throw new Error("Invalid response format: entities array missing");
+        if (!Array.isArray(jsonResponse.relationships)) {
+          throw new Error("Invalid response format: relationships array missing");
         }
 
-        // Validate each entity
-        jsonResponse.entities = jsonResponse.entities.filter(entity => typeof entity === 'string');
-
-        // Call the extract-relationships function
-        const relationshipsResponse = await fetch(SUPABASE_URL + "/functions/v1/extract-relationships", {
-          method: "POST",
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-          },
-          body: JSON.stringify({ text: text })
-        });
-
-        if (!relationshipsResponse.ok) {
-          throw new Error(`Extract relationships function error: ${relationshipsResponse.status}`);
-        }
-
-        const relationshipsData = await relationshipsResponse.json();
-
-        // Combine entities and relationships into a single response
-        const combinedResponse = {
-          entities: jsonResponse.entities,
-          relationships: relationshipsData.relationships || []
-        };
+        // Validate each relationship object
+        jsonResponse.relationships = jsonResponse.relationships.filter(rel =>
+          rel.source && rel.target && rel.type &&
+          typeof rel.source === 'string' &&
+          typeof rel.target === 'string' &&
+          typeof rel.type === 'string'
+        );
 
         res.writeHead(200, { ...corsHeaders, "Content-Type": "application/json" });
-        res.end(JSON.stringify(combinedResponse));
+        res.end(JSON.stringify(jsonResponse));
 
       } catch (error: any) {
         console.error("Error:", error);
@@ -132,7 +114,7 @@ ${text}
   }
 });
 
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 8001;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
