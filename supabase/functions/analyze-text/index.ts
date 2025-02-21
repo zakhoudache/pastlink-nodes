@@ -79,19 +79,30 @@ serve(async (req) => {
           });
       }
 
-
       const fullText = data.candidates[0].content.parts[0].text;
-
       const [summary, relationshipsJson] = fullText.split('RELATIONSHIPS_JSON:');
       let relationships = [];
+
       try {
         if (relationshipsJson) {
-          relationships = JSON.parse(relationshipsJson.trim()).relationships;
+          // Use a regular expression to extract the JSON
+          const jsonMatch = relationshipsJson.match(/```json\s*([\s\S]*?)\s*```/);
+
+          if (jsonMatch && jsonMatch[1]) {
+            relationships = JSON.parse(jsonMatch[1].trim()).relationships;
+          } else {
+            // Handle the case where the JSON isn't in the expected format
+            console.error('Error: Could not find JSON in Gemini response.');
+            return new Response(JSON.stringify({ error: 'Could not find relationships JSON in the expected format.' }), {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
         }
       } catch (e) {
         console.error('Error parsing relationships JSON:', e);
-        //  Return a structured error.  Don't just fail silently.
-        return new Response(JSON.stringify({ error: 'Error parsing Gemini response JSON', details: e.message }), {
+        //  Return a structured error, including the original Gemini response.
+        return new Response(JSON.stringify({ error: 'Error parsing Gemini response JSON', details: e.message, geminiResponse: fullText }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
