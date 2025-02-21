@@ -2,11 +2,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+const GEMINI_API_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 // IMPORTANT: Replace '*' with your actual frontend origin in production!
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // For development.  Use a specific origin in production.
+  'Access-Control-Allow-Origin': '*', // For development. Use a specific origin in production.
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS', // Explicitly list allowed methods
 };
@@ -14,7 +15,7 @@ const corsHeaders = {
 serve(async (req) => {
   // Handle OPTIONS request (preflight)
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders }); // 204 No Content
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   // Handle POST request
@@ -54,29 +55,43 @@ serve(async (req) => {
         First provide the Arabic summary, then on a new line start with "RELATIONSHIPS_JSON:" followed by the JSON.
       `;
 
+      if (!GEMINI_API_KEY) {
+        console.error('Gemini API key is not set');
+        return new Response(
+          JSON.stringify({ error: 'Gemini API key missing' }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      // Fetch response from Gemini API
       const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }]
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
       });
 
       const data = await response.json();
+      console.log('Full Gemini API response:', data);
 
       // Check for Gemini API errors
-      if (!data.candidates || data.candidates.length === 0 || !data.candidates[0].content) {
-          console.error('Gemini API error:', data);
-          return new Response(JSON.stringify({ error: 'Gemini API returned an unexpected response.' }), {
-            status: 502, // Bad Gateway (upstream error)
+      if (
+        !data.candidates ||
+        data.candidates.length === 0 ||
+        !data.candidates[0].content
+      ) {
+        console.error('Gemini API error:', data);
+        return new Response(
+          JSON.stringify({
+            error: 'Gemini API returned an unexpected response.',
+          }),
+          {
+            status: 502,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          }
+        );
       }
 
       const fullText = data.candidates[0].content.parts[0].text;
@@ -87,37 +102,49 @@ serve(async (req) => {
         if (relationshipsJson) {
           // Use a regular expression to extract the JSON
           const jsonMatch = relationshipsJson.match(/```json\s*([\s\S]*?)\s*```/);
-
           if (jsonMatch && jsonMatch[1]) {
             relationships = JSON.parse(jsonMatch[1].trim()).relationships;
           } else {
-            // Handle the case where the JSON isn't in the expected format
             console.error('Error: Could not find JSON in Gemini response.');
-            return new Response(JSON.stringify({ error: 'Could not find relationships JSON in the expected format.' }), {
-              status: 500,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
+            return new Response(
+              JSON.stringify({
+                error:
+                  'Could not find relationships JSON in the expected format.',
+              }),
+              {
+                status: 500,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              }
+            );
           }
         }
       } catch (e) {
         console.error('Error parsing relationships JSON:', e);
-        //  Return a structured error, including the original Gemini response.
-        return new Response(JSON.stringify({ error: 'Error parsing Gemini response JSON', details: e.message, geminiResponse: fullText }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return new Response(
+          JSON.stringify({
+            error: 'Error parsing Gemini response JSON',
+            details: e.message,
+            geminiResponse: fullText,
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
       }
 
-      return new Response(JSON.stringify({ summary: summary.trim(), relationships }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-
+      return new Response(
+        JSON.stringify({ summary: summary.trim(), relationships }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     } catch (error) {
       console.error('Error generating summary:', error);
-       let errorMessage = 'An unexpected error occurred.';
-        if (error instanceof Error) {
-            errorMessage = error.message;
-        }
+      let errorMessage = 'An unexpected error occurred.';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
       return new Response(JSON.stringify({ error: errorMessage }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -126,8 +153,8 @@ serve(async (req) => {
   }
 
   // Handle unsupported methods
-   return new Response('Method Not Allowed', {
-      status: 405,
-      headers: corsHeaders,
-    });
+  return new Response('Method Not Allowed', {
+    status: 405,
+    headers: corsHeaders,
+  });
 });
