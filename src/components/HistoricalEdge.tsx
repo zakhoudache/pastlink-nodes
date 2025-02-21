@@ -6,8 +6,6 @@ export interface HistoricalEdgeData {
   customLabel?: string;
 }
 
-type HistoricalEdgeProps = EdgeProps<{ type: string; customLabel?: string }>;
-
 export function HistoricalEdge({
   id,
   sourceX,
@@ -19,7 +17,7 @@ export function HistoricalEdge({
   style = {},
   markerEnd,
   data,
-}: HistoricalEdgeProps) {
+}: EdgeProps) {
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -29,7 +27,7 @@ export function HistoricalEdge({
     targetPosition,
   });
 
-  const edgeData = data || { type: 'connected' };
+  const edgeLabel = data?.customLabel || data?.type || 'connected';
 
   return (
     <>
@@ -44,7 +42,7 @@ export function HistoricalEdge({
           className="nodrag nopan"
         >
           <div className="px-2 py-1 bg-white rounded shadow-sm border text-sm">
-            {edgeData.customLabel || edgeData.type || 'connected'}
+            {edgeLabel}
           </div>
         </div>
       </EdgeLabelRenderer>
