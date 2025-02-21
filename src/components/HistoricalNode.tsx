@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 
 export type NodeType = 'event' | 'person' | 'cause' | 'political' | 'economic' | 'social' | 'cultural';
 
-export interface HistoricalNodeData {
+export interface HistoricalNodeData extends Record<string, unknown> {
   label: string;
   type: NodeType;
   description?: string;
