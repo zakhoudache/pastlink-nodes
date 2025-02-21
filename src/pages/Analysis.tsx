@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useCallback, useState } from "react";
+import { useCallback,useEffect, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Card } from "@/components/ui/card";
