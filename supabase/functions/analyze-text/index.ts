@@ -1,8 +1,7 @@
 // index.ts
 
 import { corsHeaders } from '../shared-one/cors';
-import { createClient } from '@supabase/supabase-js';
-import { SUMMARY_RELATIONSHIPS_PROMPT } from './utils';
+import { ALTERNATIVE_PROMPT } from './utils';
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const GEMINI_API_URL =
@@ -20,7 +19,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Parse request body
+    // Parse incoming request body
     let requestBody;
     try {
       requestBody = await req.json();
@@ -52,7 +51,6 @@ Deno.serve(async (req) => {
         }
       );
     }
-
     if (!GEMINI_API_KEY) {
       console.error("Missing Gemini API key");
       return new Response(
@@ -67,10 +65,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build prompt using the robust prompt from utils.ts
-    const prompt = `${SUMMARY_RELATIONSHIPS_PROMPT}\n\nText to analyze:\n${text}`;
+    // Build the prompt using our alternative prompt from utils.ts.
+    const prompt = `${ALTERNATIVE_PROMPT}\n\nText to analyze:\n${text}`;
 
-    // Call Gemini API
+    // Call the Gemini API
     const response = await fetch(GEMINI_API_URL, {
       method: "POST",
       headers: {
@@ -114,7 +112,6 @@ Deno.serve(async (req) => {
         }
       );
     }
-
     if (!response.ok) {
       console.error("Gemini API error:", data);
       return new Response(
@@ -128,7 +125,6 @@ Deno.serve(async (req) => {
         }
       );
     }
-
     if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
       console.error("Invalid Gemini API response structure:", data);
       return new Response(
@@ -145,16 +141,17 @@ Deno.serve(async (req) => {
 
     const fullText = data.candidates[0].content.parts[0].text;
 
-    // ----- NEW EXTRACTION APPROACH -----
-    // Instead of relying on markers, extract the JSON using the first '{' and last '}'.
-    const firstBrace = fullText.indexOf("{");
-    const lastBrace = fullText.lastIndexOf("}");
-    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
-      console.error("Could not find valid JSON boundaries in output:", fullText);
+    // Extract the custom formatted output between RESULT_START: and RESULT_END:
+    const startMarker = "RESULT_START:";
+    const endMarker = "RESULT_END:";
+    const startIndex = fullText.indexOf(startMarker);
+    const endIndex = fullText.lastIndexOf(endMarker);
+    if (startIndex === -1 || endIndex === -1) {
+      console.error("Could not find valid markers in output:", fullText);
       return new Response(
         JSON.stringify({
           error: "Extraction error",
-          details: "No valid JSON object found in the API response.",
+          details: "Markers not found in API response",
         }),
         {
           status: 500,
@@ -162,21 +159,41 @@ Deno.serve(async (req) => {
         }
       );
     }
-    const jsonStr = fullText.substring(firstBrace, lastBrace + 1).trim();
-    // ------------------------------------
+    const extracted = fullText
+      .substring(startIndex + startMarker.length, endIndex)
+      .trim();
 
-    // Try to parse the JSON string
-    let parsedResult;
-    try {
-      parsedResult = JSON.parse(jsonStr);
-    } catch (error) {
-      console.error("Error parsing extracted JSON:", error);
-      console.error("Extracted JSON string:", jsonStr);
+    // The expected custom format is:
+    //
+    // ENTITIES:
+    // - [entity text] | [entity type] | related: [related entity text1]; [related entity text2]
+    // - [another entity] | [another type] | related:
+    // RELATIONSHIPS:
+    // - [source entity] -> [target entity] | [relationship type]
+    // - [another source] -> [another target] | [relationship type]
+
+    // Split the extracted output into lines and trim them
+    const lines = extracted
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line !== "");
+
+    const entitiesIndex = lines.findIndex((line) =>
+      line.toUpperCase().startsWith("ENTITIES:")
+    );
+    const relationshipsIndex = lines.findIndex((line) =>
+      line.toUpperCase().startsWith("RELATIONSHIPS:")
+    );
+
+    if (entitiesIndex === -1 || relationshipsIndex === -1) {
+      console.error(
+        "Could not find ENTITIES or RELATIONSHIPS markers in output:",
+        extracted
+      );
       return new Response(
         JSON.stringify({
-          error: "Failed to parse analysis results",
-          details: error instanceof Error ? error.message : "Unknown error",
-          raw_text: jsonStr,
+          error: "Extraction error",
+          details: "Required section markers not found in output",
         }),
         {
           status: 500,
@@ -185,30 +202,55 @@ Deno.serve(async (req) => {
       );
     }
 
-    // For the summary extraction, attempt to use markers (if present)
-    let summary = "";
-    const summaryRegex = /SUMMARY_START:\s*([\s\S]*?)\s*SUMMARY_END:/;
-    const summaryMatch = fullText.match(summaryRegex);
-    if (summaryMatch && summaryMatch[1]) {
-      summary = summaryMatch[1].trim();
-    } else {
-      // If markers aren't found, fallback to an empty summary or use a default message.
-      summary = "";
-    }
+    // Extract entity lines (lines between ENTITIES: and RELATIONSHIPS:)
+    const entityLines = lines.slice(entitiesIndex + 1, relationshipsIndex);
+    // Extract relationship lines (lines after RELATIONSHIPS:)
+    const relationshipLines = lines.slice(relationshipsIndex + 1);
 
-    // Expecting the JSON to contain "relationships" property
-    let relationships = [];
-    if (parsedResult.relationships && Array.isArray(parsedResult.relationships)) {
-      relationships = parsedResult.relationships;
-    } else {
-      console.warn("Parsed JSON does not have a 'relationships' array", parsedResult);
-    }
+    // Parse entity lines.
+    const entities = entityLines.map((line) => {
+      // Remove any leading hyphen
+      if (line.startsWith("-")) {
+        line = line.substring(1).trim();
+      }
+      // Expected format: "[entity text] | [entity type] | related: [related entity text1]; [related entity text2]"
+      const parts = line.split("|").map((s) => s.trim());
+      const entityText = parts[0] || "";
+      const entityType = parts[1] || "";
+      let relatedTo: string[] = [];
+      if (parts.length > 2 && parts[2].toLowerCase().startsWith("related:")) {
+        const relatedStr = parts[2].substring("related:".length).trim();
+        relatedTo = relatedStr.split(";").map((s) => s.trim()).filter((s) => s.length > 0);
+      }
+      return { text: entityText, type: entityType, relatedTo };
+    });
+
+    // Parse relationship lines.
+    const relationships = relationshipLines
+      .map((line) => {
+        if (line.startsWith("-")) {
+          line = line.substring(1).trim();
+        }
+        // Expected format: "[source entity] -> [target entity] | [relationship type]"
+        const arrowIndex = line.indexOf("->");
+        if (arrowIndex === -1) return null;
+        const source = line.substring(0, arrowIndex).trim();
+        const remainder = line.substring(arrowIndex + 2).trim();
+        const pipeIndex = remainder.indexOf("|");
+        let target = "";
+        let relType = "";
+        if (pipeIndex !== -1) {
+          target = remainder.substring(0, pipeIndex).trim();
+          relType = remainder.substring(pipeIndex + 1).trim();
+        } else {
+          target = remainder;
+        }
+        return { source, target, type: relType };
+      })
+      .filter((r) => r !== null);
 
     return new Response(
-      JSON.stringify({
-        summary,
-        relationships,
-      }),
+      JSON.stringify({ entities, relationships }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
