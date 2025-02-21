@@ -19,7 +19,7 @@ serve(async (req) => {
   try {
     const { text } = await req.json();
 
-    // Build the prompt without mentioning the forbidden keyword.
+    // Build the prompt instructing plain text output without any formatting hints.
     const prompt = `
 يرجى تحليل النص التاريخي التالي وتقديم ملخص شامل باللغة العربية.
 يجب أن يتضمن الملخص الأحداث الرئيسية، الشخصيات، والمفاهيم، مع شرح للعلاقات بين العناصر،
@@ -30,7 +30,7 @@ serve(async (req) => {
 RELATIONSHIPS:
 - [الكيان المصدر] -> [الكيان الهدف] | [نوع العلاقة]
 
-يرجى تقديم الإخراج كنص عادي فقط، دون استخدام أي تنسيق برمجي.
+يرجى تقديم الإخراج كنص عادي فقط، بدون استخدام أي تنسيق برمجي أو أي مصطلحات تدل على تنسيق معين.
 
 النص لتحليله:
 ${text}

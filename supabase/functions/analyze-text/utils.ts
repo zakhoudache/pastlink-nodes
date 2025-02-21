@@ -16,7 +16,7 @@
  * - [another source] -> [another target] | [relationship type]
  * RESULT_END:
  *
- * Do not include any additional text, markdown, or formatting.
+ * Do not include any additional text or formatting.
  */
 
 export const ALTERNATIVE_PROMPT = `
@@ -26,7 +26,7 @@ Your task is to:
 2. Classify each entity into one of the following types: event, person, cause, political, economic, social, cultural.
 3. Identify relationships between these entities.
 
-Return your output strictly in the following format without any additional text or formatting:
+Return your output strictly in the following plain text format:
 
 RESULT_START:
 ENTITIES:

@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build the prompt using Arabic text without using the forbidden keyword.
+    // Build the prompt using Arabic text, instructing plain text output without any structured format hints.
     const prompt = `
 ${ALTERNATIVE_PROMPT}
 
@@ -64,7 +64,7 @@ ${text}
 العلاقات:
 - [الكيان المصدر] -> [الكيان الهدف], النوع: [نوع العلاقة]
 
-يرجى تقديم الإخراج كنص عادي فقط، دون استخدام أي تنسيق برمجي.
+يرجى تقديم الإخراج كنص عادي فقط، بدون استخدام أي تنسيق برمجي أو أي مصطلحات تدل على تنسيق معين.
 `;
 
     // Call Gemini API.
