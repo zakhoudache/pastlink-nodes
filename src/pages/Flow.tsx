@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useCallback, useState, useEffect } from 'react';
@@ -19,12 +18,16 @@ import {
   applyEdgeChanges,
   useReactFlow,
 } from '@xyflow/react';
+import { toPng } from 'html-to-image';
+import jsPDF from 'jspdf';
 import HistoricalNode, { NodeType, HistoricalNodeData } from '../components/HistoricalNode';
 import { HistoricalEdge } from '../components/HistoricalEdge';
 import { EdgeDialog } from '../components/EdgeDialog';
 import { getNodePosition } from '../utils/flowUtils';
 import { useHighlightStore } from '../utils/highlightStore';
 import { LeftPanel } from '../components/flow/LeftPanel';
+import { RightPanel } from '../components/flow/RightPanel';
+import { toast } from 'sonner';
 
 const edgeTypes: EdgeTypes = {
   historical: HistoricalEdge,
@@ -54,7 +57,40 @@ const FlowContent = () => {
   const [edgeTargetNode, setEdgeTargetNode] = useState<string | null>(null);
 
   const { highlights, removeHighlight } = useHighlightStore();
-  const { setViewport } = useReactFlow();
+  const { setViewport, getNodes } = useReactFlow();
+
+  const exportToPdf = useCallback(async () => {
+    const flowElement = document.querySelector('.react-flow');
+    if (!flowElement) return;
+
+    try {
+      const dataUrl = await toPng(flowElement as HTMLElement, {
+        backgroundColor: '#ffffff',
+        quality: 1,
+      });
+
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [flowElement.clientWidth, flowElement.clientHeight],
+      });
+
+      pdf.addImage(
+        dataUrl,
+        'PNG',
+        0,
+        0,
+        flowElement.clientWidth,
+        flowElement.clientHeight
+      );
+
+      pdf.save('flow-diagram.pdf');
+      toast.success('PDF exported successfully!');
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      toast.error('Failed to export PDF');
+    }
+  }, []);
 
   useEffect(() => {
     const handleNodeUpdate = (event: Event) => {
@@ -121,7 +157,7 @@ const FlowContent = () => {
   );
 
   return (
-    <div className="h-screen w-full">
+    <div className="h-screen w-full relative">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -136,6 +172,7 @@ const FlowContent = () => {
         <Background />
         <Controls />
         <LeftPanel onAddNode={addNode} />
+        <RightPanel onExportPdf={exportToPdf} />
       </ReactFlow>
       <EdgeDialog
         isOpen={isEdgeDialogOpen}
