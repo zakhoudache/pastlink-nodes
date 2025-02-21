@@ -165,9 +165,10 @@ Deno.serve(async (req) => {
     if (match && match[1]) {
       let jsonStr = match[1];
 
-      // Remove any unwanted prefixes like "json" if present
-      if (jsonStr.trim().toLowerCase().startsWith("json")) {
-        jsonStr = jsonStr.trim().replace(/^json\s*/i, '');
+      // Remove any unwanted prefixes (e.g. "json" or newlines) before the first '{'
+      const firstCurly = jsonStr.indexOf('{');
+      if (firstCurly !== -1) {
+        jsonStr = jsonStr.substring(firstCurly);
       }
 
       try {
