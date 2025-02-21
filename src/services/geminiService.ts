@@ -77,6 +77,14 @@ export async function analyzeText(text: string): Promise<EntityAnalysisResponse>
     throw new Error('Failed to extract JSON from analysis results');
   }
 
+  // Clean up potential unwanted prefix (e.g. "json") before the JSON object
+  if (jsonStr.toLowerCase().startsWith('json')) {
+    const firstBraceIndex = jsonStr.indexOf('{');
+    if (firstBraceIndex !== -1) {
+      jsonStr = jsonStr.substring(firstBraceIndex).trim();
+    }
+  }
+
   try {
     const result = JSON.parse(jsonStr);
     return result;
