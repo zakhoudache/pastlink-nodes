@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,7 +8,6 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useHighlightStore } from "../utils/highlightStore";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import RelationshipsTable from '../components/RelationshipsTable';
@@ -22,7 +21,7 @@ interface Relationship {
 export default function Analysis() {
   const [text, setText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [temperature, setTemperature] = useState([0.9]);
+  const [temperature, setTemperature] = useState([0.7]);
   const [autoHighlight, setAutoHighlight] = useState(true);
   const { highlights, addHighlight } = useHighlightStore();
   const [relationships, setRelationships] = useState<Relationship[]>([]);
@@ -36,48 +35,46 @@ export default function Analysis() {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('analyze-text', {
-        body: { text },
+        body: { 
+          text,
+          temperature: temperature[0]
+        },
       });
 
       if (error) throw error;
 
-      if (data.relationships) {
-        setRelationships(data.relationships);
+      if (!data || !Array.isArray(data.relationships)) {
+        throw new Error("Invalid response format from API");
       }
 
-      if (data.entities && data.relationships) {
-        // Dispatch a custom event with the analysis results
-        const event = new CustomEvent('analysisResults', {
-          detail: {
-            entities: data.entities,
-            relationships: data.relationships,
-          },
-        });
-        window.dispatchEvent(event);
+      setRelationships(data.relationships);
 
-        if (autoHighlight) {
-          data.entities.forEach((entity: { text: string }) => {
-            const startIndex = text.indexOf(entity.text);
+      if (autoHighlight) {
+        // Highlight both source and target entities
+        data.relationships.forEach((rel: Relationship) => {
+          [rel.source, rel.target].forEach(entity => {
+            const startIndex = text.indexOf(entity);
             if (startIndex !== -1) {
               addHighlight({
                 id: `highlight-${Date.now()}-${Math.random()}`,
-                text: entity.text,
+                text: entity,
                 from: startIndex,
-                to: startIndex + entity.text.length,
+                to: startIndex + entity.length,
               });
             }
           });
-        }
-
-        toast.success("Analysis complete!");
+        });
       }
+
+      toast.success("Analysis complete!");
+
     } catch (error) {
       console.error("Analysis error:", error);
-      toast.error("Failed to analyze text");
+      toast.error(error.message || "Failed to analyze text");
     } finally {
       setIsLoading(false);
     }
-  }, [text, autoHighlight, addHighlight, setRelationships]);
+  }, [text, temperature, autoHighlight, addHighlight]);
 
   return (
     <div className="space-y-4">
@@ -108,12 +105,20 @@ export default function Analysis() {
           checked={autoHighlight}
           onCheckedChange={setAutoHighlight}
         />
-        <Label htmlFor="auto-highlight">Auto-highlight important elements</Label>
+        <Label htmlFor="auto-highlight">Auto-highlight entities</Label>
       </div>
 
-      <Button onClick={analyzeText} disabled={isLoading}>
+      <Button 
+        onClick={analyzeText} 
+        disabled={isLoading}
+        className="w-full md:w-auto"
+      >
         {isLoading ? "Analyzing..." : "Analyze Text"}
       </Button>
+
+      {relationships.length > 0 && (
+        <RelationshipsTable relationships={relationships} />
+      )}
 
       <div className="space-y-2">
         <h3 className="text-lg font-medium">Highlights</h3>
@@ -124,32 +129,26 @@ export default function Analysis() {
             <Skeleton className="h-4 w-[300px]" />
           </div>
         ) : highlights.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Text</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {highlights.map((highlight) => (
-                <TableRow key={highlight.id}>
-                  <TableCell>{highlight.text}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm">
-                      Use
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="border rounded-lg p-4">
+            {highlights.map((highlight) => (
+              <div key={highlight.id} className="flex items-center justify-between py-2">
+                <span>{highlight.text}</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    // Add your highlight action here
+                  }}
+                >
+                  Use
+                </Button>
+              </div>
+            ))}
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">No highlights yet</p>
         )}
       </div>
-
-      <RelationshipsTable relationships={relationships} />
     </div>
   );
 }
