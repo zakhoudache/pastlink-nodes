@@ -19,12 +19,10 @@ import {
   applyEdgeChanges,
   useReactFlow,
 } from '@xyflow/react';
-import { toPng } from 'html-to-image';
-import { jsPDF } from 'jspdf';
 import HistoricalNode, { NodeType, HistoricalNodeData } from '../components/HistoricalNode';
 import { HistoricalEdge } from '../components/HistoricalEdge';
 import { EdgeDialog } from '../components/EdgeDialog';
-import { getNodePosition, getNodesBounds } from '../utils/flowUtils';
+import { getNodePosition } from '../utils/flowUtils';
 import { useHighlightStore } from '../utils/highlightStore';
 import { LeftPanel } from '../components/flow/LeftPanel';
 
@@ -72,7 +70,7 @@ const FlowContent = () => {
   }, []);
 
   const onNodesChange = useCallback(
-    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as Node<HistoricalNodeData>[]),
     []
   );
 

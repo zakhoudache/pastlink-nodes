@@ -27,6 +27,8 @@ export function HistoricalEdge({
     targetPosition,
   });
 
+  const edgeData = data || { type: 'connected' };
+
   return (
     <>
       <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
@@ -40,7 +42,7 @@ export function HistoricalEdge({
           className="nodrag nopan"
         >
           <div className="px-2 py-1 bg-white rounded shadow-sm border text-sm">
-            {data?.customLabel || data?.type || 'connected'}
+            {edgeData.customLabel || edgeData.type || 'connected'}
           </div>
         </div>
       </EdgeLabelRenderer>
