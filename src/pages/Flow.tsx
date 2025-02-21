@@ -21,12 +21,13 @@ import {
   applyNodeChanges,
   applyEdgeChanges,
   getViewportForBounds,
+  useReactFlow,
 } from '@xyflow/react';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, ZoomIn } from 'lucide-react';
 import HistoricalNode, { NodeType, HistoricalNodeData } from '../components/HistoricalNode';
 import { HistoricalEdge, HistoricalEdgeData } from '../components/HistoricalEdge';
 
@@ -173,6 +174,7 @@ export default function Flow() {
   const [edgeTargetNode, setEdgeTargetNode] = useState<string | null>(null);
 
   const { highlights, removeHighlight } = useHighlightStore();
+  const { setViewport } = useReactFlow();
 
   useEffect(() => {
     setIsMounted(true);
@@ -191,10 +193,23 @@ export default function Flow() {
     return () => window.removeEventListener('updateNodeData', handleNodeUpdate);
   }, []);
 
+  const fitView = useCallback(() => {
+    if (nodes.length === 0) return;
+    const bounds = getNodesBounds(nodes);
+    const { x, y, zoom } = getViewportForBounds(
+      bounds,
+      window.innerWidth,
+      window.innerHeight,
+      0.5,
+      2
+    );
+    setViewport({ x, y, zoom });
+  }, [nodes, setViewport]);
+
   const downloadAsPDF = useCallback(() => {
     if (nodes.length === 0) return;
     const nodesBounds = getNodesBounds(nodes);
-    const transform = getViewportForBounds(nodesBounds, nodesBounds.width, nodesBounds.height, 0.5);
+    const { x, y, zoom } = getViewportForBounds(nodesBounds, nodesBounds.width, nodesBounds.height, 0.5);
     const flowElement = document.querySelector('.react-flow') as HTMLElement | null;
     if (!flowElement) return;
 
@@ -202,7 +217,7 @@ export default function Flow() {
       backgroundColor: '#ffffff',
       width: nodesBounds.width,
       height: nodesBounds.height,
-      style: { transform: `translate(${transform[0]}px, ${transform[1]}px) scale(${transform[2]})` },
+      style: { transform: `translate(${x}px, ${y}px) scale(${zoom})` },
     }).then((dataUrl) => {
       const pdf = new jsPDF({
         orientation: 'landscape',
@@ -298,10 +313,16 @@ export default function Flow() {
         <Background />
         <Controls />
         <Panel position="top-left" className="bg-background/50 backdrop-blur-sm p-2 rounded-lg">
-          <Button variant="outline" size="sm" onClick={downloadAsPDF} className="flex items-center gap-2">
-            <Download size={16} />
-            حفظ كـ PDF
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={fitView} className="flex items-center gap-2">
+              <ZoomIn size={16} />
+              Fit View
+            </Button>
+            <Button variant="outline" size="sm" onClick={downloadAsPDF} className="flex items-center gap-2">
+              <Download size={16} />
+              حفظ كـ PDF
+            </Button>
+          </div>
         </Panel>
         <Panel position="top-right" className="bg-background/50 backdrop-blur-sm p-4 rounded-lg w-80">
           <div className="space-y-4">
