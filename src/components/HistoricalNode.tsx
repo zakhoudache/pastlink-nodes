@@ -8,17 +8,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-/** Define the possible node types */
+// Define possible node types
 export type NodeType = 'event' | 'person' | 'cause' | 'political' | 'economic' | 'social' | 'cultural';
 
-/** Interface for the node data */
+// Interface for node data
 export interface HistoricalNodeData {
   label: string;
   type: NodeType;
   description?: string;
 }
 
-/** Props interface for the HistoricalNode component */
+// Props interface for the component
 interface Props {
   data: HistoricalNodeData;
   isConnectable: boolean;
@@ -26,7 +26,7 @@ interface Props {
   selected: boolean;
 }
 
-/** Icons for each node type */
+// Icons for each node type
 const typeIcons: Record<NodeType, string> = {
   event: '📅',
   person: '👤',
@@ -37,7 +37,7 @@ const typeIcons: Record<NodeType, string> = {
   cultural: '🎭',
 };
 
-/** Labels for each node type in Arabic */
+// Labels for each node type (in Arabic)
 const typeLabels: Record<NodeType, string> = {
   event: 'حدث',
   person: 'شخصية',
@@ -48,7 +48,7 @@ const typeLabels: Record<NodeType, string> = {
   cultural: 'ثقافي',
 };
 
-/** Colors for each node type */
+// Colors for each node type
 const typeColors: Record<NodeType, { bg: string; border: string }> = {
   event: { bg: 'bg-blue-50', border: 'border-blue-200' },
   person: { bg: 'bg-green-50', border: 'border-green-200' },
@@ -59,13 +59,13 @@ const typeColors: Record<NodeType, { bg: string; border: string }> = {
   cultural: { bg: 'bg-indigo-50', border: 'border-indigo-200' },
 };
 
-/** HistoricalNode Component */
+// HistoricalNode component
 export default function HistoricalNode({ data, isConnectable, id, selected }: Props) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editedData, setEditedData] = useState<HistoricalNodeData>(data);
   const prevOpen = useRef(false);
 
-  /** Reset editedData when dialog opens */
+  // Reset editedData when the dialog opens
   useEffect(() => {
     if (!prevOpen.current && isDialogOpen) {
       setEditedData(data);
@@ -73,13 +73,13 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
     prevOpen.current = isDialogOpen;
   }, [isDialogOpen, data]);
 
-  /** Open dialog on double-click */
+  // Handle double-click to open the dialog
   const handleDoubleClick = useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
     setIsDialogOpen(true);
   }, []);
 
-  /** Save changes and dispatch update event */
+  // Handle saving edited data
   const handleSave = useCallback(() => {
     const event = new CustomEvent('updateNodeData', {
       detail: { id, data: editedData },
@@ -88,7 +88,7 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
     setIsDialogOpen(false);
   }, [id, editedData]);
 
-  /** Handle case where data is missing */
+  // Check if data is provided
   if (!data) {
     return <div>خطأ: لم يتم توفير البيانات</div>;
   }
@@ -98,7 +98,6 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
 
   return (
     <>
-      {/* Node Card */}
       <Card
         className={`w-60 shadow-sm ${colors.bg} ${colors.border} border-2 ${selected ? 'ring-2 ring-blue-500' : ''}`}
         dir="rtl"
@@ -130,7 +129,6 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
         />
       </Card>
 
-      {/* Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
