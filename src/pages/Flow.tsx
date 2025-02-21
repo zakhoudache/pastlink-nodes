@@ -38,7 +38,59 @@ interface EdgeDialogProps {
   defaultType?: string;
   defaultLabel?: string;
 }
+function EdgeDialog({ isOpen, onClose, onConfirm, defaultType = 'related-to', defaultLabel }: EdgeDialogProps) {
+  const [customLabel, setCustomLabel] = useState<string | undefined>(defaultLabel);
+  const [selectedType, setSelectedType] = useState<string>(defaultType);
 
+  const handleConfirm = () => {
+    onConfirm(selectedType, customLabel);
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Select Relationship Type</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Relationship Type</Label>
+            <Select defaultValue={defaultType} onValueChange={(value) => setSelectedType(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose relationship type" />
+              </SelectTrigger>
+              <SelectContent>
+                {relationshipTypes.map((type) => (
+                  <SelectItem key={type} value={type.toLowerCase().replace(/ /g, '-')}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Custom Label (Optional)</Label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border rounded-md"
+              placeholder="Enter custom label"
+              value={customLabel || ''}
+              onChange={(e) => setCustomLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleConfirm();
+                }
+              }}
+            />
+          </div>
+          <Button onClick={handleConfirm}>Confirm</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 const edgeTypes: EdgeTypes = {
   historical: HistoricalEdge,
 };
@@ -110,60 +162,6 @@ const getNodesBounds = (nodes: Node[]): { x: number; y: number; width: number; h
     height: maxY - minY + 2 * padding,
   };
 };
-
-function EdgeDialog({ isOpen, onClose, onConfirm, defaultType = 'related-to', defaultLabel }: EdgeDialogProps) {
-  const [customLabel, setCustomLabel] = useState<string | undefined>(defaultLabel);
-  const [selectedType, setSelectedType] = useState<string>(defaultType);
-
-  const handleConfirm = () => {
-    onConfirm(selectedType, customLabel);
-    onClose();
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Select Relationship Type</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Relationship Type</Label>
-            <Select defaultValue={defaultType} onValueChange={(value) => setSelectedType(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose relationship type" />
-              </SelectTrigger>
-              <SelectContent>
-                {relationshipTypes.map((type) => (
-                  <SelectItem key={type} value={type.toLowerCase().replace(/ /g, '-')}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Custom Label (Optional)</Label>
-            <input
-              type="text"
-              className="w-full px-3 py-2 border rounded-md"
-              placeholder="Enter custom label"
-              value={customLabel || ''}
-              onChange={(e) => setCustomLabel(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleConfirm();
-                }
-              }}
-            />
-          </div>
-          <Button onClick={handleConfirm}>Confirm</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 export default function Flow() {
   const [isMounted, setIsMounted] = useState(false);
