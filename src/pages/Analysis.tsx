@@ -46,10 +46,15 @@ export default function Analysis() {
 
         if (autoHighlight) {
           data.entities.forEach((entity: { text: string }) => {
-            addHighlight({
-              id: `highlight-${Date.now()}-${Math.random()}`,
-              text: entity.text,
-            });
+            const startIndex = text.indexOf(entity.text);
+            if (startIndex !== -1) {
+              addHighlight({
+                id: `highlight-${Date.now()}-${Math.random()}`,
+                text: entity.text,
+                from: startIndex,
+                to: startIndex + entity.text.length,
+              });
+            }
           });
         }
 

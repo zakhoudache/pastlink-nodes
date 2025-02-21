@@ -6,6 +6,8 @@ export interface HistoricalEdgeData {
   customLabel?: string;
 }
 
+type HistoricalEdgeProps = EdgeProps<{ type: string; customLabel?: string }>;
+
 export function HistoricalEdge({
   id,
   sourceX,
@@ -17,7 +19,7 @@ export function HistoricalEdge({
   style = {},
   markerEnd,
   data,
-}: EdgeProps<HistoricalEdgeData>) {
+}: HistoricalEdgeProps) {
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
