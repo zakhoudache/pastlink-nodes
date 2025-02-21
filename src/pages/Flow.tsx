@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -38,7 +38,7 @@ export default function Flow() {
   const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
 
   // Update nodes and edges when analysis changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!analysis) return;
 
     // Create nodes from entities
