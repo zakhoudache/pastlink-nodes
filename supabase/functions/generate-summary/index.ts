@@ -47,7 +47,7 @@ serve(async (req) => {
       Text to analyze:
       ${text}
       
-      First provide the Arabic summary, then on a new line start with "RELATIONSHIPS_JSON:" followed by the JSON.
+      First provide the Arabic summary, then on a new line start with "RELATIONSHIPS_JSON:" .
     `;
 
     const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
