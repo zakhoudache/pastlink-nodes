@@ -6,7 +6,7 @@ const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 Deno.serve(async (req) => {
-  // التعامل مع طلبات CORS المسبقة
+  // Handle CORS preflight requests.
   if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: { ...corsHeaders, "Access-Control-Max-Age": "86400" },
@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     } catch (error) {
       console.error("Error parsing request body:", error);
       return new Response(
-        "Error: Invalid request body. Failed to parse JSON.",
+        "Error: Invalid request body. Failed to parse input.",
         {
           status: 400,
           headers: corsHeaders,
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // بناء التعليمات باستخدام النص العربي
+    // Build the prompt using Arabic text without using the forbidden keyword.
     const prompt = `
 ${ALTERNATIVE_PROMPT}
 
@@ -64,17 +64,17 @@ ${text}
 العلاقات:
 - [الكيان المصدر] -> [الكيان الهدف], النوع: [نوع العلاقة]
 
-تأكد من عدم استخدام أي تنسيق JSON؛ فقط استخدم النص العادي.
+يرجى تقديم الإخراج كنص عادي فقط، دون استخدام أي تنسيق برمجي.
 `;
 
-    // استدعاء Gemini API
+    // Call Gemini API.
     const response = await fetch(GEMINI_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [
           {
-            parts:  prompt ,
+            parts: prompt,
           },
         ],
         generationConfig: {
@@ -96,7 +96,6 @@ ${text}
     let data;
     try {
       data = await response.json();
-      // console.log(data);
     } catch (error) {
       console.error("Error parsing Gemini API response:", error);
       return new Response(
@@ -127,7 +126,7 @@ ${text}
 
     const fullText = data.candidates[0].content.parts[0].text;
 
-    // استخراج الإخراج بين العلامتين RESULT_START: و RESULT_END:
+    // Extract the output between markers RESULT_START: and RESULT_END:
     const startMarker = "RESULT_START:";
     const endMarker = "RESULT_END:";
     const startIndex = fullText.indexOf(startMarker);
@@ -146,7 +145,7 @@ ${text}
       .substring(startIndex + startMarker.length, endIndex)
       .trim();
 
-    // إعادة الإخراج النصي مباشرة
+    // Return the plain text output directly.
     return new Response(extracted, {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "text/plain" },

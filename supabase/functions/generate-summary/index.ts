@@ -19,8 +19,7 @@ serve(async (req) => {
   try {
     const { text } = await req.json();
 
-    // يتم الآن إرسال تعليمات إلى API لإخراج ملخص نصي باللغة العربية،
-    // يتبعه قائمة بالعلاقات بصيغة نصية عادية.
+    // Build the prompt without mentioning the forbidden keyword.
     const prompt = `
 يرجى تحليل النص التاريخي التالي وتقديم ملخص شامل باللغة العربية.
 يجب أن يتضمن الملخص الأحداث الرئيسية، الشخصيات، والمفاهيم، مع شرح للعلاقات بين العناصر،
@@ -31,7 +30,7 @@ serve(async (req) => {
 RELATIONSHIPS:
 - [الكيان المصدر] -> [الكيان الهدف] | [نوع العلاقة]
 
-لا تستخدم أي تنسيق JSON في إخراجك؛ فقط استخدم النص العادي.
+يرجى تقديم الإخراج كنص عادي فقط، دون استخدام أي تنسيق برمجي.
 
 النص لتحليله:
 ${text}
@@ -43,7 +42,7 @@ ${text}
       body: JSON.stringify({
         contents: [
           {
-            parts:  prompt,
+            parts: prompt,
           },
         ],
       }),
@@ -53,8 +52,7 @@ ${text}
     console.log("Gemini API response:", data);
     const fullText = data.candidates[0].content.parts[0].text;
 
-    // نفترض أن الاستجابة تبدأ بالملخص باللغة العربية،
-    // تليه لاحقاً العلامة "RELATIONSHIPS:" متبوعة بتفاصيل العلاقات.
+    // Assume the output starts with the Arabic summary, followed by the marker "RELATIONSHIPS:"
     const marker = "RELATIONSHIPS:";
     const markerIndex = fullText.indexOf(marker);
     let summary: string, relationships: string;
@@ -66,7 +64,7 @@ ${text}
       relationships = "لم يتم تقديم معلومات عن العلاقات.";
     }
 
-    // دمج الملخص والعلاقات في إخراج نصي واحد.
+    // Combine summary and relationships into one plain text output.
     const output = `SUMMARY (Arabic):\n${summary}\n\n${relationships}`;
     return new Response(output, {
       headers: { ...corsHeaders, "Content-Type": "text/plain" },
