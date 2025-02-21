@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,6 +17,7 @@ import {
   Node,
   Connection,
   Panel,
+  addEdge,
   useNodesState,
   useEdgesState,
 } from '@xyflow/react';
@@ -128,40 +130,39 @@ function EdgeDialog({ isOpen, onClose, onConfirm, defaultType, defaultLabel }: E
 }
 
 export default function Flow() {
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<HistoricalNodeData>>(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge<HistoricalEdgeData>>(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [isEdgeDialogOpen, setIsEdgeDialogOpen] = React.useState(false);
   const [edgeSourceNode, setEdgeSourceNode] = React.useState<string | null>(null);
   const [edgeTargetNode, setEdgeTargetNode] = React.useState<string | null>(null);
 
   const { highlights, removeHighlight } = useHighlightStore();
 
-  const onConnect = useCallback((params: Connection) => {
+  const onConnect = React.useCallback((params: Connection) => {
     setEdgeSourceNode(params.source || null);
     setEdgeTargetNode(params.target || null);
     setIsEdgeDialogOpen(true);
   }, []);
 
-  const handleEdgeComplete = useCallback((type: string, customLabel?: string) => {
+  const handleEdgeComplete = React.useCallback((type: string, customLabel?: string) => {
     if (!edgeSourceNode || !edgeTargetNode) return;
 
     const edgeId = `e${edgeSourceNode}-${edgeTargetNode}`;
-    const newEdge: Edge<HistoricalEdgeData> = {
+    setEdges((eds) => addEdge({
       id: edgeId,
       source: edgeSourceNode,
       target: edgeTargetNode,
       type: 'historical',
       data: { type, customLabel },
       animated: true,
-    };
-
-    setEdges((eds) => [...eds, newEdge]);
+    }, eds));
+    
     setEdgeSourceNode(null);
     setEdgeTargetNode(null);
     setIsEdgeDialogOpen(false);
   }, [edgeSourceNode, edgeTargetNode, setEdges]);
 
-  const createNodeFromHighlight = useCallback((highlight: { id: string; text: string }, type: NodeType) => {
+  const createNodeFromHighlight = React.useCallback((highlight: { id: string; text: string }, type: NodeType) => {
     const position = getNodePosition(nodes);
     const newNode: Node<HistoricalNodeData> = {
       id: highlight.id,
@@ -178,7 +179,7 @@ export default function Flow() {
     removeHighlight(highlight.id);
   }, [nodes, removeHighlight, setNodes]);
 
-  const addNode = useCallback((type: NodeType) => {
+  const addNode = React.useCallback((type: NodeType) => {
     const newNode: Node<HistoricalNodeData> = {
       id: `${Date.now()}`,
       type: 'historical',
