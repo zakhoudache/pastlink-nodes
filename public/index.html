@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CORS Test</title>
+</head>
+<body>
+  <h1>CORS Test</h1>
+  <button onclick="sendRequest()">Send Request</button>
+  <script>
+    async function sendRequest() {
+      try {
+        const response = await fetch('http://localhost:54321/functions/v1/analyze-text', { //CHANGE URL
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text: 'Some test text' }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Response:', data);
+      } catch (error) {
+        console.error('Analysis error:', error);
+      }
+    }
+  </script>
+</body>
+</html>
