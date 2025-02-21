@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -17,6 +16,7 @@ import {
   Node,
   Connection,
   Panel,
+  ReactFlowProvider,
   addEdge,
   useNodesState,
   useEdgesState,
@@ -130,13 +130,45 @@ function EdgeDialog({ isOpen, onClose, onConfirm, defaultType, defaultLabel }: E
 }
 
 export default function Flow() {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes] = React.useState<Node<HistoricalNodeData>[]>([]);
+  const [edges, setEdges] = React.useState<Edge<HistoricalEdgeData>[]>([]);
   const [isEdgeDialogOpen, setIsEdgeDialogOpen] = React.useState(false);
   const [edgeSourceNode, setEdgeSourceNode] = React.useState<string | null>(null);
   const [edgeTargetNode, setEdgeTargetNode] = React.useState<string | null>(null);
 
   const { highlights, removeHighlight } = useHighlightStore();
+
+  const onNodesChange = React.useCallback((changes: any[]) => {
+    setNodes((nds) => {
+      return changes.reduce((acc, change) => {
+        if (change.type === 'remove') {
+          return acc.filter((node) => node.id !== change.id);
+        }
+        return acc.map((node) => {
+          if (node.id === change.id) {
+            return { ...node, ...change };
+          }
+          return node;
+        });
+      }, nds);
+    });
+  }, []);
+
+  const onEdgesChange = React.useCallback((changes: any[]) => {
+    setEdges((eds) => {
+      return changes.reduce((acc, change) => {
+        if (change.type === 'remove') {
+          return acc.filter((edge) => edge.id !== change.id);
+        }
+        return acc.map((edge) => {
+          if (edge.id === change.id) {
+            return { ...edge, ...change };
+          }
+          return edge;
+        });
+      }, eds);
+    });
+  }, []);
 
   const onConnect = React.useCallback((params: Connection) => {
     setEdgeSourceNode(params.source || null);
@@ -148,19 +180,20 @@ export default function Flow() {
     if (!edgeSourceNode || !edgeTargetNode) return;
 
     const edgeId = `e${edgeSourceNode}-${edgeTargetNode}`;
-    setEdges((eds) => addEdge({
+    const newEdge: Edge<HistoricalEdgeData> = {
       id: edgeId,
       source: edgeSourceNode,
       target: edgeTargetNode,
       type: 'historical',
       data: { type, customLabel },
       animated: true,
-    }, eds));
-    
+    };
+
+    setEdges((eds) => [...eds, newEdge]);
     setEdgeSourceNode(null);
     setEdgeTargetNode(null);
     setIsEdgeDialogOpen(false);
-  }, [edgeSourceNode, edgeTargetNode, setEdges]);
+  }, [edgeSourceNode, edgeTargetNode]);
 
   const createNodeFromHighlight = React.useCallback((highlight: { id: string; text: string }, type: NodeType) => {
     const position = getNodePosition(nodes);
@@ -177,7 +210,7 @@ export default function Flow() {
 
     setNodes((nds) => [...nds, newNode]);
     removeHighlight(highlight.id);
-  }, [nodes, removeHighlight, setNodes]);
+  }, [nodes, removeHighlight]);
 
   const addNode = React.useCallback((type: NodeType) => {
     const newNode: Node<HistoricalNodeData> = {
@@ -192,175 +225,177 @@ export default function Flow() {
     };
 
     setNodes((nds) => [...nds, newNode]);
-  }, [nodes, setNodes]);
+  }, [nodes]);
 
   return (
     <div className="h-screen w-full">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        defaultEdgeOptions={defaultEdgeOptions}
-        fitView
-      >
-        <Background />
-        <Controls />
-        <Panel position="top-right" className="bg-background/50 backdrop-blur-sm p-4 rounded-lg w-80">
-          <div className="space-y-4">
-            <h3 className="font-semibold">Highlighted Passages</h3>
-            {highlights.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No highlights available. Select text in the Analysis page to create nodes.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {highlights.map((highlight) => (
-                  <Card key={highlight.id} className="p-3">
-                    <p className="text-sm mb-2">{highlight.text}</p>
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="bg-blue-50 hover:bg-blue-100"
-                          onClick={() => createNodeFromHighlight(highlight, 'event')}
-                        >
-                          Event
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="bg-green-50 hover:bg-green-100"
-                          onClick={() => createNodeFromHighlight(highlight, 'person')}
-                        >
-                          Person
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="bg-red-50 hover:bg-red-100"
-                          onClick={() => createNodeFromHighlight(highlight, 'cause')}
-                        >
-                          Cause
-                        </Button>
+      <ReactFlowProvider>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          defaultEdgeOptions={defaultEdgeOptions}
+          fitView
+        >
+          <Background />
+          <Controls />
+          <Panel position="top-right" className="bg-background/50 backdrop-blur-sm p-4 rounded-lg w-80">
+            <div className="space-y-4">
+              <h3 className="font-semibold">Highlighted Passages</h3>
+              {highlights.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No highlights available. Select text in the Analysis page to create nodes.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {highlights.map((highlight) => (
+                    <Card key={highlight.id} className="p-3">
+                      <p className="text-sm mb-2">{highlight.text}</p>
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="bg-blue-50 hover:bg-blue-100"
+                            onClick={() => createNodeFromHighlight(highlight, 'event')}
+                          >
+                            Event
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="bg-green-50 hover:bg-green-100"
+                            onClick={() => createNodeFromHighlight(highlight, 'person')}
+                          >
+                            Person
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="bg-red-50 hover:bg-red-100"
+                            onClick={() => createNodeFromHighlight(highlight, 'cause')}
+                          >
+                            Cause
+                          </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="bg-purple-50 hover:bg-purple-100"
+                            onClick={() => createNodeFromHighlight(highlight, 'political')}
+                          >
+                            Political
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="bg-yellow-50 hover:bg-yellow-100"
+                            onClick={() => createNodeFromHighlight(highlight, 'economic')}
+                          >
+                            Economic
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="bg-pink-50 hover:bg-pink-100"
+                            onClick={() => createNodeFromHighlight(highlight, 'social')}
+                          >
+                            Social
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="bg-indigo-50 hover:bg-indigo-100"
+                            onClick={() => createNodeFromHighlight(highlight, 'cultural')}
+                          >
+                            Cultural
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="bg-purple-50 hover:bg-purple-100"
-                          onClick={() => createNodeFromHighlight(highlight, 'political')}
-                        >
-                          Political
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="bg-yellow-50 hover:bg-yellow-100"
-                          onClick={() => createNodeFromHighlight(highlight, 'economic')}
-                        >
-                          Economic
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="bg-pink-50 hover:bg-pink-100"
-                          onClick={() => createNodeFromHighlight(highlight, 'social')}
-                        >
-                          Social
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="bg-indigo-50 hover:bg-indigo-100"
-                          onClick={() => createNodeFromHighlight(highlight, 'cultural')}
-                        >
-                          Cultural
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        </Panel>
-        <Panel position="top-left" className="bg-background/50 backdrop-blur-sm p-2 rounded-lg">
-          <div className="flex flex-col gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => addNode('event')}
-              className="bg-blue-50 hover:bg-blue-100"
-            >
-              Add Event
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => addNode('person')}
-              className="bg-green-50 hover:bg-green-100"
-            >
-              Add Person
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => addNode('cause')}
-              className="bg-red-50 hover:bg-red-100"
-            >
-              Add Cause
-            </Button>
-            <Card className="p-2">
-              <p className="text-xs font-medium mb-2">PESC Factors</p>
-              <div className="flex flex-col gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addNode('political')}
-                  className="bg-purple-50 hover:bg-purple-100"
-                >
-                  Political
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addNode('economic')}
-                  className="bg-yellow-50 hover:bg-yellow-100"
-                >
-                  Economic
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addNode('social')}
-                  className="bg-pink-50 hover:bg-pink-100"
-                >
-                  Social
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addNode('cultural')}
-                  className="bg-indigo-50 hover:bg-indigo-100"
-                >
-                  Cultural
-                </Button>
-              </div>
-            </Card>
-          </div>
-        </Panel>
-      </ReactFlow>
-      <EdgeDialog
-        isOpen={isEdgeDialogOpen}
-        onClose={() => setIsEdgeDialogOpen(false)}
-        onConfirm={handleEdgeComplete}
-        defaultType="related-to"
-      />
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Panel>
+          <Panel position="top-left" className="bg-background/50 backdrop-blur-sm p-2 rounded-lg">
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => addNode('event')}
+                className="bg-blue-50 hover:bg-blue-100"
+              >
+                Add Event
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => addNode('person')}
+                className="bg-green-50 hover:bg-green-100"
+              >
+                Add Person
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => addNode('cause')}
+                className="bg-red-50 hover:bg-red-100"
+              >
+                Add Cause
+              </Button>
+              <Card className="p-2">
+                <p className="text-xs font-medium mb-2">PESC Factors</p>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addNode('political')}
+                    className="bg-purple-50 hover:bg-purple-100"
+                  >
+                    Political
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addNode('economic')}
+                    className="bg-yellow-50 hover:bg-yellow-100"
+                  >
+                    Economic
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addNode('social')}
+                    className="bg-pink-50 hover:bg-pink-100"
+                  >
+                    Social
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addNode('cultural')}
+                    className="bg-indigo-50 hover:bg-indigo-100"
+                  >
+                    Cultural
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          </Panel>
+        </ReactFlow>
+        <EdgeDialog
+          isOpen={isEdgeDialogOpen}
+          onClose={() => setIsEdgeDialogOpen(false)}
+          onConfirm={handleEdgeComplete}
+          defaultType="related-to"
+        />
+      </ReactFlowProvider>
     </div>
   );
 }
