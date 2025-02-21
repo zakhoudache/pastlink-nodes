@@ -73,9 +73,8 @@ Deno.serve(async (req) => {
       3. يسلط الضوء على الأسباب والنتائج الرئيسية
       4. يناقش العوامل السياسية والاقتصادية والاجتماعية والثقافية
 
-      After the summary, on a new line write "RELATIONSHIPS_JSON:" followed by a JSON object containing relationships found in the text. Each relationship should have a "text" field and a "type" field. Valid types are: event, person, cause, political, economic, social, cultural.
-
-      The JSON must be a valid object with a "relationships" array. Do not include any other text or formatting around the JSON.
+      After the summary, on a new line write "RELATIONSHIPS_JSON:" followed by a JSON object containing relationships found in the text. The JSON must be a valid object with a "relationships" array.  Do not include any other text or formatting around the JSON object, including markdown.
+      Start the JSON object immediately after the colon without any leading text or spaces.
 
       Text to analyze:
       ${text}
@@ -158,37 +157,59 @@ Deno.serve(async (req) => {
     let relationships = [];
     if (relationshipsRaw) {
       try {
-        // Clean the JSON string
-        const cleanedText = relationshipsRaw
-          .replace(/```json/g, '')
-          .replace(/```/g, '')
-          .replace(/^[\s\n]*json[\s\n]*/i, '')
-          .trim();
+        // Improved JSON extraction:  Find the *first* '{' and *last* '}'
 
-        // Find the JSON object bounds
-        const startIdx = cleanedText.indexOf('{');
-        const endIdx = cleanedText.lastIndexOf('}') + 1;
-        
-        if (startIdx >= 0 && endIdx > startIdx) {
-          const jsonStr = cleanedText.slice(startIdx, endIdx);
-          const parsed = JSON.parse(jsonStr);
-          
-          if (Array.isArray(parsed.relationships)) {
-            relationships = parsed.relationships;
-          }
+        let jsonStr = '';
+        const startIdx = relationshipsRaw.indexOf('{');
+        const endIdx = relationshipsRaw.lastIndexOf('}') + 1;
+
+
+        if (startIdx !== -1 && endIdx > startIdx) {
+            //Extract the JSON substring
+            jsonStr = relationshipsRaw.substring(startIdx, endIdx).trim();
+        } else {
+            console.warn("Could not find valid JSON bounds in relationshipsRaw:", relationshipsRaw);
+            throw new Error("Could not find valid JSON bounds.");  // Force error
         }
+
+        // **AGGRESSIVE CLEANUP: Remove anything before the first '{'**
+        jsonStr = jsonStr.substring(jsonStr.indexOf('{')).trim();
+
+        // Attempt to parse the JSON string
+        const parsed = JSON.parse(jsonStr);
+
+        if (Array.isArray(parsed.relationships)) {
+          relationships = parsed.relationships;
+        } else {
+          console.warn("Parsed JSON does not have a 'relationships' array:", parsed);
+          // Optionally, handle cases where Gemini returns a valid JSON, but without the array.
+        }
+
+
       } catch (error) {
         console.error('Error parsing relationships JSON:', error);
         console.log('Raw relationships text:', relationshipsRaw);
-        // Continue with empty relationships array
+        console.log('Extracted JSON string:', jsonStr); // Log the string *before* parsing
+        return new Response( // Return an error response to the client
+          JSON.stringify({
+            error: 'Failed to parse relationships JSON',
+            details: error.message,
+            raw_text: relationshipsRaw,  // Include the raw text for debugging
+            extracted_json: jsonStr
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
       }
     }
 
     // Validate relationships format
-    relationships = relationships.filter(rel => 
-      rel && 
-      typeof rel === 'object' && 
-      typeof rel.text === 'string' && 
+    relationships = relationships.filter(rel =>
+      rel &&
+      typeof rel === 'object' &&
+      typeof rel.text === 'string' &&
       typeof rel.type === 'string'
     );
 
