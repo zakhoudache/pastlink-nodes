@@ -39,8 +39,6 @@ Deno.serve(async (req) => {
     }
 
     const { text } = requestBody;
-
-    // Validate required fields
     if (!text) {
       console.error("Missing required text field");
       return new Response(
@@ -55,7 +53,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check for API key
     if (!GEMINI_API_KEY) {
       console.error("Missing Gemini API key");
       return new Response(
@@ -101,7 +98,6 @@ Deno.serve(async (req) => {
       }),
     });
 
-    // Handle Gemini API response
     let data;
     try {
       data = await response.json();
@@ -149,73 +145,64 @@ Deno.serve(async (req) => {
 
     const fullText = data.candidates[0].content.parts[0].text;
 
-    // Extract summary and relationships JSON using explicit markers
-    const summaryRegex = /SUMMARY_START:\s*([\s\S]*?)\s*SUMMARY_END:/;
-    const relationshipsRegex = /RELATIONSHIPS_JSON_START:\s*({[\s\S]*?})\s*RELATIONSHIPS_JSON_END:/;
+    // ----- NEW EXTRACTION APPROACH -----
+    // Instead of relying on markers, extract the JSON using the first '{' and last '}'.
+    const firstBrace = fullText.indexOf("{");
+    const lastBrace = fullText.lastIndexOf("}");
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+      console.error("Could not find valid JSON boundaries in output:", fullText);
+      return new Response(
+        JSON.stringify({
+          error: "Extraction error",
+          details: "No valid JSON object found in the API response.",
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+    const jsonStr = fullText.substring(firstBrace, lastBrace + 1).trim();
+    // ------------------------------------
 
+    // Try to parse the JSON string
+    let parsedResult;
+    try {
+      parsedResult = JSON.parse(jsonStr);
+    } catch (error) {
+      console.error("Error parsing extracted JSON:", error);
+      console.error("Extracted JSON string:", jsonStr);
+      return new Response(
+        JSON.stringify({
+          error: "Failed to parse analysis results",
+          details: error instanceof Error ? error.message : "Unknown error",
+          raw_text: jsonStr,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // For the summary extraction, attempt to use markers (if present)
     let summary = "";
-    let relationships = [];
-
+    const summaryRegex = /SUMMARY_START:\s*([\s\S]*?)\s*SUMMARY_END:/;
     const summaryMatch = fullText.match(summaryRegex);
     if (summaryMatch && summaryMatch[1]) {
       summary = summaryMatch[1].trim();
     } else {
-      console.warn(
-        "Could not extract summary using regex. Using full text as summary."
-      );
-      summary = fullText;
+      // If markers aren't found, fallback to an empty summary or use a default message.
+      summary = "";
     }
 
-    const relationshipsMatch = fullText.match(relationshipsRegex);
-    if (relationshipsMatch && relationshipsMatch[1]) {
-      let jsonStr = relationshipsMatch[1];
-
-      // Remove any unwanted characters before the first '{'
-      const firstCurly = jsonStr.indexOf("{");
-      if (firstCurly !== -1) {
-        jsonStr = jsonStr.substring(firstCurly).trim();
-      }
-
-      try {
-        const parsed = JSON.parse(jsonStr);
-        if (Array.isArray(parsed.relationships)) {
-          relationships = parsed.relationships;
-        } else {
-          console.warn(
-            "Parsed JSON does not have a 'relationships' array:",
-            parsed
-          );
-        }
-      } catch (error) {
-        console.error("Error parsing relationships JSON:", error);
-        return new Response(
-          JSON.stringify({
-            error: "Failed to parse relationships JSON",
-            details: error.message,
-            raw_text: jsonStr,
-          }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
+    // Expecting the JSON to contain "relationships" property
+    let relationships = [];
+    if (parsedResult.relationships && Array.isArray(parsedResult.relationships)) {
+      relationships = parsedResult.relationships;
     } else {
-      console.warn(
-        "Could not extract relationships JSON using regex. Raw text:",
-        fullText
-      );
+      console.warn("Parsed JSON does not have a 'relationships' array", parsedResult);
     }
-
-    // Validate relationships format
-    relationships = relationships.filter(
-      (rel) =>
-        rel &&
-        typeof rel === "object" &&
-        typeof rel.source === "string" &&
-        typeof rel.target === "string" &&
-        typeof rel.type === "string"
-    );
 
     return new Response(
       JSON.stringify({
@@ -224,10 +211,7 @@ Deno.serve(async (req) => {
       }),
       {
         status: 200,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   } catch (error) {
@@ -235,15 +219,11 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         error: "Unexpected error",
-        details:
-          error instanceof Error ? error.message : "An unknown error occurred",
+        details: error instanceof Error ? error.message : "An unknown error occurred",
       }),
       {
         status: 500,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   }
