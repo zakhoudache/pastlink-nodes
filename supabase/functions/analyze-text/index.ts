@@ -100,9 +100,10 @@ serve(async (req) => {
 
       try {
         if (relationshipsJson) {
-          // Remove all backticks, remove a potential "json" prefix (case-insensitive), and trim whitespace
+          // Remove all backticks using split/join, remove a potential "json" prefix, and trim whitespace
           const cleanedJson = relationshipsJson
-            .replace(/`/g, '')
+            .split('`')
+            .join('')
             .replace(/^json\s*/i, '')
             .trim();
 
