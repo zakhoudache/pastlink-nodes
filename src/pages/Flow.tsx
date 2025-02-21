@@ -22,13 +22,13 @@ import {
 } from '@xyflow/react';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
-import HistoricalNode, { NodeType, HistoricalNodeData } from './HistoricalNode';
-import { HistoricalEdge, HistoricalEdgeData } from './HistoricalEdge';
+import HistoricalNode, { NodeType, HistoricalNodeData } from '../components/HistoricalNode';
+import { HistoricalEdge, HistoricalEdgeData } from '../components/HistoricalEdge';
 import { EdgeDialog } from './EdgeDialog';
 import { getNodePosition, getNodesBounds } from '../utils/flowUtils';
 import { useHighlightStore } from '../utils/highlightStore';
-import { LeftPanel } from './LeftPanel';
-import { RightPanel } from './RightPanel';
+import { LeftPanel } from '../components/flow/LeftPanel';
+import { RightPanel } from '../components/flow/RightPanel';
 
 
 const edgeTypes: EdgeTypes = {
