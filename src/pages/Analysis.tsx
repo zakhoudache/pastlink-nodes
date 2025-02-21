@@ -43,24 +43,26 @@ export default function Analysis() {
 
       if (error) throw error;
 
-      if (!data || !Array.isArray(data.entities) || !Array.isArray(data.relationships)) {
+      if (!data || !Array.isArray(data.relationships)) {
         throw new Error("Invalid response format from API");
       }
 
       setRelationships(data.relationships);
 
       if (autoHighlight) {
-        // Highlight entities
-        data.entities.forEach((entity: string) => {
-          const startIndex = text.indexOf(entity);
-          if (startIndex !== -1) {
-            addHighlight({
-              id: `highlight-${Date.now()}-${Math.random()}`,
-              text: entity,
-              from: startIndex,
-              to: startIndex + entity.length,
-            });
-          }
+        // Highlight both source and target entities
+        data.relationships.forEach((rel: Relationship) => {
+          [rel.source, rel.target].forEach(entity => {
+            const startIndex = text.indexOf(entity);
+            if (startIndex !== -1) {
+              addHighlight({
+                id: `highlight-${Date.now()}-${Math.random()}`,
+                text: entity,
+                from: startIndex,
+                to: startIndex + entity.length,
+              });
+            }
+          });
         });
       }
 
