@@ -1,19 +1,10 @@
+
 import { BaseEdge, EdgeLabelRenderer, EdgeProps, getBezierPath } from '@xyflow/react';
-import { Button } from '@/components/ui/button';
 
 interface EdgeData {
   type: string;
   customLabel?: string;
 }
-
-const relationshipColors: Record<string, { stroke: string; background: string }> = {
-  'caused-by': { stroke: '#ef4444', background: '#fee2e2' },
-  'led-to': { stroke: '#3b82f6', background: '#dbeafe' },
-  'influenced': { stroke: '#8b5cf6', background: '#ede9fe' },
-  'part-of': { stroke: '#10b981', background: '#d1fae5' },
-  'opposed-to': { stroke: '#f59e0b', background: '#fef3c7' },
-  'related-to': { stroke: '#64748b', background: '#f1f5f9' },
-};
 
 export function HistoricalEdge({
   id,
@@ -26,13 +17,7 @@ export function HistoricalEdge({
   style = {},
   markerEnd,
   data,
-  selected,
-  onEdgeClick,
 }: EdgeProps<EdgeData>) {
-
-  const colors = relationshipColors[data?.type || 'related-to'];
-  const label = data?.customLabel || data?.type?.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -42,35 +27,22 @@ export function HistoricalEdge({
     targetPosition,
   });
 
-
   return (
     <>
-      <BaseEdge
-        path={edgePath}
-        markerEnd={markerEnd}
-        style={{
-          ...style,
-          stroke: colors.stroke,
-          strokeWidth: selected ? 3 : 2,
-          transition: 'stroke-width 0.2s',
-        }}
-      />
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
       <EdgeLabelRenderer>
-        <Button
-          className="nodrag nopan absolute -translate-x-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-xs"
-          variant="outline"
+        <div
           style={{
-            left: labelX,
-            top: labelY,
-            backgroundColor: colors.background,
-            borderColor: colors.stroke,
-            color: colors.stroke,
-            fontWeight: 500,
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            pointerEvents: 'all',
           }}
-          onClick={(event) => onEdgeClick?.(event, id)}
+          className="nodrag nopan"
         >
-          {label}
-        </Button>
+          <div className="px-2 py-1 bg-white rounded shadow-sm border text-sm">
+            {data?.customLabel || data?.type || 'connected'}
+          </div>
+        </div>
       </EdgeLabelRenderer>
     </>
   );

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCallback, useState, useEffect } from 'react';
@@ -55,18 +56,16 @@ const nodeTypes = {
 };
 
 const initialNodes: Node<HistoricalNodeData>[] = [];
-
 const initialEdges: Edge[] = [];
 
-
 const relationshipTypes = [
-    'Caused by',
-    'Led to',
-    'Influenced',
-    'Part of',
-    'Opposed to',
-    'Related to',
-  ];
+  'Caused by',
+  'Led to',
+  'Influenced',
+  'Part of',
+  'Opposed to',
+  'Related to',
+];
 
 const getNodePosition = (nodes: Node[]): { x: number; y: number } => {
   if (nodes.length === 0) return { x: 100, y: 100 };
@@ -78,14 +77,86 @@ const getNodePosition = (nodes: Node[]): { x: number; y: number } => {
   };
 };
 
+function EdgeDialog({ isOpen, onClose, onConfirm, defaultType, defaultLabel }: EdgeDialogProps) {
+  const [customLabel, setCustomLabel] = useState(defaultLabel);
+  const [selectedType, setSelectedType] = useState(defaultType);
+
+  const handleConfirm = (type: string, customLabel?: string) => {
+    onConfirm(type, customLabel);
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Select Relationship Type</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Relationship Type</Label>
+            <Select defaultValue={defaultType} onValueChange={(value) => setSelectedType(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose relationship type" />
+              </SelectTrigger>
+              <SelectContent>
+                {relationshipTypes.map((type) => (
+                  <SelectItem key={type} value={type.toLowerCase().replace(/ /g, '-')}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Custom Label (Optional)</Label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border rounded-md"
+              placeholder="Enter custom label"
+              value={customLabel || ''}
+              onChange={(e) => setCustomLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && selectedType) {
+                  handleConfirm(selectedType, customLabel);
+                }
+              }}
+            />
+          </div>
+          <Button onClick={() => handleConfirm(selectedType || defaultType || "related-to", customLabel)}>
+            Confirm
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function Flow() {
   const [nodes, setNodes] = useState<Node<HistoricalNodeData>[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
-  const [pendingEdge, setPendingEdge] = useState<Connection | null>(null);
   const [isEdgeDialogOpen, setIsEdgeDialogOpen] = useState(false);
   const [edgeSourceNode, setEdgeSourceNode] = useState<string | null>(null);
   const [edgeTargetNode, setEdgeTargetNode] = useState<string | null>(null);
+
+  const { highlights, removeHighlight } = useHighlightStore();
+
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    []
+  );
+
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+    []
+  );
+
+  const onConnect = useCallback((params: Connection) => {
+    setEdgeSourceNode(params.source || null);
+    setEdgeTargetNode(params.target || null);
+    setIsEdgeDialogOpen(true);
+  }, []);
 
   const handleEdgeComplete = useCallback((type: string, customLabel?: string) => {
     if (!edgeSourceNode || !edgeTargetNode) return;
@@ -101,33 +172,12 @@ export default function Flow() {
     };
 
     setEdges((eds) => [...eds, newEdge]);
-    setPendingEdge(null);
-    setIsEdgeDialogOpen(false);
     setEdgeSourceNode(null);
     setEdgeTargetNode(null);
+    setIsEdgeDialogOpen(false);
   }, [edgeSourceNode, edgeTargetNode]);
 
-  const { highlights, removeHighlight } = useHighlightStore();
-
-  const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-    []
-  );
-
-  const onConnect = useCallback((params: Connection) => {
-    setPendingEdge(params);
-    setEdgeSourceNode(params.source || null);
-    setEdgeTargetNode(params.target || null);
-    setIsEdgeDialogOpen(true);
-  }, []
-  );
-
-  const onNodesChange = useCallback(
-    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
-    []
-  );
-
-  const createNodeFromHighlight = (highlight: { id: string; text: string }, type: NodeType) => {
+  const createNodeFromHighlight = useCallback((highlight: { id: string; text: string }, type: NodeType) => {
     const position = getNodePosition(nodes);
     const newNode: Node<HistoricalNodeData> = {
       id: highlight.id,
@@ -142,13 +192,13 @@ export default function Flow() {
 
     setNodes((nds) => [...nds, newNode]);
     removeHighlight(highlight.id);
-  };
+  }, [nodes, removeHighlight]);
 
-  const addNode = (type: NodeType) => {
+  const addNode = useCallback((type: NodeType) => {
     const newNode: Node<HistoricalNodeData> = {
       id: `${Date.now()}`,
       type: 'historical',
-      position: { x: 100, y: 100 },
+      position: getNodePosition(nodes),
       data: {
         type,
         label: `New ${type}`,
@@ -157,16 +207,16 @@ export default function Flow() {
     };
 
     setNodes((nds) => [...nds, newNode]);
-  };
+  }, [nodes]);
 
   return (
     <div className="h-screen w-full">
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onNodesChange={onNodesChange}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
@@ -174,7 +224,6 @@ export default function Flow() {
       >
         <Background />
         <Controls />
-        {/* Node Creation Panel */}
         <Panel position="top-right" className="bg-background/50 backdrop-blur-sm p-4 rounded-lg w-80">
           <div className="space-y-4">
             <h3 className="font-semibold">Highlighted Passages</h3>
@@ -248,7 +297,6 @@ export default function Flow() {
                           Cultural
                         </Button>
                       </div>
-
                     </div>
                   </Card>
                 ))}
@@ -256,7 +304,6 @@ export default function Flow() {
             )}
           </div>
         </Panel>
-        {/* Node Types Panel */}
         <Panel position="top-left" className="bg-background/50 backdrop-blur-sm p-2 rounded-lg">
           <div className="flex flex-col gap-2">
             <Button
@@ -332,57 +379,3 @@ export default function Flow() {
     </div>
   );
 }
-
-function EdgeDialog({ isOpen, onClose, onConfirm, defaultType, defaultLabel }: EdgeDialogProps) {
-    const [customLabel, setCustomLabel] = useState(defaultLabel);
-    const [selectedType, setSelectedType] = useState(defaultType);
-  
-    const handleConfirm = (type: string, customLabel?: string) => {
-      onConfirm(type, customLabel);
-      onClose();
-    };
-  
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Select Relationship Type</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Relationship Type</Label>
-              <Select defaultValue={defaultType} onValueChange={(value) => setSelectedType(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose relationship type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {relationshipTypes.map((type) => (
-                    <SelectItem key={type} value={type.toLowerCase().replace(/ /g, '-')}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-  
-            <div className="space-y-2">
-              <Label>Custom Label (Optional)</Label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 border rounded-md"
-                placeholder="Enter custom label"
-                value={customLabel || ''}
-                onChange={(e) => setCustomLabel(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && selectedType) {
-                    handleConfirm(selectedType, customLabel);
-                  }
-                }}
-              />
-            </div>
-            <Button onClick={() => handleConfirm(selectedType || defaultType || "related-to", customLabel)}>Confirm</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
