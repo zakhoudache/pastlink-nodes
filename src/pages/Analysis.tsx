@@ -149,10 +149,7 @@ export default function Analysis() {
         )}
       </div>
 
-      <div>
-        <h3>Relationships</h3>
-        <RelationshipsTable relationships={relationships} />
-      </div>
+      <RelationshipsTable relationships={relationships} />
     </div>
   );
 }
