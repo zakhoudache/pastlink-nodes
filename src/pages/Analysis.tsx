@@ -1,6 +1,3 @@
-// Analysis.tsx
-'use client';
-
 import React, { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +9,7 @@ import { useHighlightStore } from "../utils/highlightStore";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import RelationshipsTable from '../components/RelationshipsTable';
+import { EdgeDialog } from '../components/EdgeDialog';
 
 interface Relationship {
   source: string;
@@ -30,6 +28,24 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
   const [autoHighlight, setAutoHighlight] = useState(true);
   const { highlights, addHighlight } = useHighlightStore();
   const [relationships, setRelationships] = useState<Relationship[]>([]);
+  const [isEdgeDialogOpen, setIsEdgeDialogOpen] = useState(false);
+  const [currentRelationship, setCurrentRelationship] = useState<{source: string, target: string} | null>(null);
+
+  const handleEdgeComplete = useCallback((type: string, customLabel?: string) => {
+    if (!currentRelationship) return;
+    
+    const newRelationship: Relationship = {
+      source: currentRelationship.source,
+      target: currentRelationship.target,
+      type
+    };
+
+    const updatedRelationships = [...relationships, newRelationship];
+    setRelationships(updatedRelationships);
+    onAnalysisComplete?.(updatedRelationships);
+    setIsEdgeDialogOpen(false);
+    setCurrentRelationship(null);
+  }, [currentRelationship, relationships, onAnalysisComplete]);
 
   const analyzeText = useCallback(async () => {
     if (!text.trim()) {
@@ -52,11 +68,14 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
         throw new Error("Invalid response format from API");
       }
 
-      setRelationships(data.relationships);
-      onAnalysisComplete?.(data.relationships);
-
-      if (autoHighlight) {
-        data.relationships.forEach((rel: Relationship) => {
+      // Instead of directly setting relationships, open EdgeDialog for each relationship
+      data.relationships.forEach((rel: Relationship, index: number) => {
+        setTimeout(() => {
+          setCurrentRelationship({ source: rel.source, target: rel.target });
+          setIsEdgeDialogOpen(true);
+        }, index * 100); // Stagger the dialogs slightly
+        
+        if (autoHighlight) {
           [rel.source, rel.target].forEach(entity => {
             const startIndex = text.indexOf(entity);
             if (startIndex !== -1) {
@@ -68,8 +87,8 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
               });
             }
           });
-        });
-      }
+        }
+      });
 
       toast.success("Analysis complete!");
 
@@ -135,8 +154,8 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
           <RelationshipsTable 
             relationships={relationships}
             onEdit={(rel, index) => {
-              // Add edit functionality if needed
-              console.log('Edit relationship:', rel, 'at index:', index);
+              setCurrentRelationship({ source: rel.source, target: rel.target });
+              setIsEdgeDialogOpen(true);
             }}
             onDelete={(index) => {
               const newRelationships = [...relationships];
@@ -147,6 +166,16 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
           />
         )}
       </div>
+
+      <EdgeDialog
+        isOpen={isEdgeDialogOpen}
+        onClose={() => {
+          setIsEdgeDialogOpen(false);
+          setCurrentRelationship(null);
+        }}
+        onConfirm={handleEdgeComplete}
+        defaultType="related-to"
+      />
     </div>
   );
 }
