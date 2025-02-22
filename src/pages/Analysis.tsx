@@ -69,18 +69,26 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
 
       if (error) throw error;
 
+      console.log('Received response from analyze-text:', data);
+
       if (!data || !Array.isArray(data.relationships)) {
         throw new Error("Invalid response format from API");
       }
 
-      // Instead of directly setting relationships, open EdgeDialog for each relationship
-      data.relationships.forEach((rel: Relationship, index: number) => {
-        setTimeout(() => {
-          setCurrentRelationship({ source: rel.source, target: rel.target });
-          setIsEdgeDialogOpen(true);
-        }, index * 100); // Stagger the dialogs slightly
+      // Directly set the relationships from the response
+      const formattedRelationships = data.relationships.map((rel: any) => ({
+        source: rel.source,
+        target: rel.target,
+        type: rel.type || 'related-to' // Default type if none provided
+      }));
+
+      console.log('Formatted relationships:', formattedRelationships);
+      
+      setRelationships(formattedRelationships);
+      onAnalysisComplete?.(formattedRelationships);
         
-        if (autoHighlight) {
+      if (autoHighlight) {
+        formattedRelationships.forEach(rel => {
           [rel.source, rel.target].forEach(entity => {
             const startIndex = text.indexOf(entity);
             if (startIndex !== -1) {
@@ -92,8 +100,8 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
               });
             }
           });
-        }
-      });
+        });
+      }
 
       toast.success("Analysis complete!");
 
