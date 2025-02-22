@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     if (!text?.trim()) {
       return new Response(
         JSON.stringify({
-          error: "Missing or empty required field 'text'."
+          error: "حقل 'text' مطلوب ولا يمكن أن يكون فارغًا."
         }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable not set");
+      throw new Error("لم يتم تعيين متغير البيئة GEMINI_API_KEY.");
     }
    
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -46,40 +46,41 @@ Deno.serve(async (req) => {
       }
     });
 
-    const prompt = `Analyze this historical text and extract relationships and entities. Return ONLY a valid JSON object matching this structure, with no additional text or formatting:
+    const prompt = `حلل هذا النص التاريخي واستخرج العلاقات والكيانات المذكورة فيه. أعد فقط كائن JSON صالح يطابق هذا الهيكل، دون أي نص إضافي أو تنسيق:
+
     {
       "events": [
         {
-          "date": "YYYY or specific date",
-          "description": "detailed event description"
+          "date": "السنة أو التاريخ المحدد",
+          "description": "وصف تفصيلي للحدث"
         }
       ],
-      "people": ["list of important people mentioned"],
-      "locations": ["list of locations mentioned"],
-      "terms": ["list of key historical terms or concepts"],
+      "people": ["قائمة بأهم الشخصيات المذكورة"],
+      "locations": ["قائمة بالمواقع الجغرافية المذكورة"],
+      "terms": ["قائمة بالمصطلحات أو المفاهيم التاريخية الأساسية"],
       "relationships": [
         {
-          "source": "entity name (person, event, location)",
-          "target": "related entity name",
-          "type": "relationship type"
+          "source": "اسم الكيان (شخص، حدث، موقع)",
+          "target": "اسم الكيان المرتبط به",
+          "type": "نوع العلاقة"
         }
       ]
     }
 
-    Requirements:
-    1. For relationships, use ONLY these types: caused-by, led-to, influenced, part-of, opposed-to, related-to
-    2. Source and target must be actual entities mentioned in the text
-    3. Each array must contain at least one item
-    4. Dates should be consistent in format
-    5. Descriptions should be detailed but concise
+    ### الشروط:
+    1. يجب أن يكون نوع العلاقة واحدًا من الأنواع التالية فقط: ${VALID_RELATIONSHIP_TYPES.join(', ')}
+    2. يجب أن يكون المصدر والهدف كيانين حقيقيين مذكورين في النص.
+    3. يجب أن تحتوي كل قائمة على عنصر واحد على الأقل.
+    4. يجب أن يكون تنسيق التواريخ متسقًا.
+    5. يجب أن تكون الأوصاف مفصلة ولكن مختصرة.
 
-    Text to analyze: ${text}`;
+    **النص للتحليل:** ${text}`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
     let responseText = response.text().trim();
     
-    // Try to extract JSON if it's wrapped in backticks or other formatting
+    // محاولة استخراج JSON إذا كان محاطًا بعلامات تنسيق
     if (!responseText.startsWith('{')) {
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -91,20 +92,20 @@ Deno.serve(async (req) => {
     try {
       jsonResponse = JSON.parse(responseText);
     } catch (error: any) {
-      console.error("Failed to parse API response as JSON:", error);
-      console.error("Response text:", responseText);
-      throw new Error(`Failed to parse API response as JSON: ${error.message}`);
+      console.error("فشل تحليل استجابة API إلى JSON:", error);
+      console.error("النص المستلم:", responseText);
+      throw new Error(`فشل تحليل استجابة API إلى JSON: ${error.message}`);
     }
    
     try {
-      // Validate arrays exist
+      // التحقق من وجود القوائم
       ['events', 'people', 'locations', 'terms', 'relationships'].forEach(key => {
         if (!Array.isArray(jsonResponse[key])) {
           jsonResponse[key] = [];
         }
       });
 
-      // Clean and validate relationships
+      // تنظيف العلاقات والتحقق من صحتها
       jsonResponse.relationships = jsonResponse.relationships
         .filter((rel: any) => 
           rel?.source && 
@@ -116,13 +117,13 @@ Deno.serve(async (req) => {
         )
         .map((rel: any) => ({
           ...rel,
-          // Convert relationship type to valid type or default to 'related-to'
+          // تحويل نوع العلاقة إلى الصيغة الصحيحة أو القيمة الافتراضية
           type: VALID_RELATIONSHIP_TYPES.includes(rel.type.toLowerCase().replace(/ /g, '-')) 
             ? rel.type.toLowerCase().replace(/ /g, '-')
             : 'related-to'
         }));
 
-      // Clean and validate events
+      // تنظيف الأحداث والتحقق من صحتها
       jsonResponse.events = jsonResponse.events
         .filter((event: any) =>
           event?.date &&
@@ -131,11 +132,11 @@ Deno.serve(async (req) => {
           typeof event.description === 'string'
         );
 
-      // Ensure arrays are not empty
+      // التأكد من أن القوائم ليست فارغة
       if (jsonResponse.relationships.length === 0) {
         jsonResponse.relationships.push({
-          source: jsonResponse.people[0] || jsonResponse.locations[0] || "Unknown",
-          target: jsonResponse.terms[0] || "Event",
+          source: jsonResponse.people[0] || jsonResponse.locations[0] || "غير معروف",
+          target: jsonResponse.terms[0] || "حدث",
           type: "related-to"
         });
       }
@@ -152,14 +153,14 @@ Deno.serve(async (req) => {
       );
 
     } catch (error: any) {
-      throw new Error(`Error validating response: ${error.message}`);
+      throw new Error(`خطأ أثناء التحقق من الاستجابة: ${error.message}`);
     }
 
   } catch (error: any) {
-    console.error("Error:", error);
+    console.error("خطأ:", error);
     return new Response(
       JSON.stringify({
-        error: "Processing error",
+        error: "حدث خطأ أثناء المعالجة",
         details: error.message
       }), {
         status: 500,
