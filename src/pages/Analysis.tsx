@@ -1,3 +1,4 @@
+// Analysis.tsx
 'use client';
 
 import React, { useCallback, useState } from "react";
@@ -18,7 +19,11 @@ interface Relationship {
   type: string;
 }
 
-export default function Analysis() {
+interface AnalysisProps {
+  onAnalysisComplete?: (relationships: Relationship[]) => void;
+}
+
+export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
   const [text, setText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [temperature, setTemperature] = useState([0.7]);
@@ -48,6 +53,7 @@ export default function Analysis() {
       }
 
       setRelationships(data.relationships);
+      onAnalysisComplete?.(data.relationships);
 
       if (autoHighlight) {
         data.relationships.forEach((rel: Relationship) => {
@@ -73,7 +79,7 @@ export default function Analysis() {
     } finally {
       setIsLoading(false);
     }
-  }, [text, temperature, autoHighlight, addHighlight]);
+  }, [text, temperature, autoHighlight, addHighlight, onAnalysisComplete]);
 
   return (
     <div className="space-y-6">
@@ -133,10 +139,10 @@ export default function Analysis() {
               console.log('Edit relationship:', rel, 'at index:', index);
             }}
             onDelete={(index) => {
-              // Add delete functionality if needed
               const newRelationships = [...relationships];
               newRelationships.splice(index, 1);
               setRelationships(newRelationships);
+              onAnalysisComplete?.(newRelationships);
             }}
           />
         )}
