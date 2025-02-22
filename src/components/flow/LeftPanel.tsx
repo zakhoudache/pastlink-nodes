@@ -56,122 +56,125 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
 
 
     return (
-        <Resizable
+        <div
             style={{
                 position: 'absolute',
-                top: 0,
-                left: 0,
+                top: position.y,
+                left: position.x,
                 zIndex: 1000, // Ensure it's on top of other elements
             }}
             ref={panelRef}
-            defaultSize={{
-                width: width,
-                height: height,
-            }}
-            minWidth={200}
-            minHeight={300}
-            maxWidth={500}
-            maxHeight={800}
-            onResize={handleResize}
-            onResizeStop={handleResize}
-            onDragStop={handleDrag}
-            draggableOpts={{ enableUserSelectHack: false }}
-
-            enableResizing={{
-                top: false,
-                right: true,
-                bottom: true,
-                left: false,
-                topRight: false,
-                bottomRight: true,
-                bottomLeft: false,
-                topLeft: false,
-            }}
         >
-            <div className="rounded-lg bg-white p-4 shadow-lg" style={{ width: '100%', height: '100%' }}>
-                <div className="mb-4 space-y-2">
-                    <Button onClick={onFitView} variant="outline" className="w-full">
-                        Fit View
-                    </Button>
-                    <Button onClick={onDownloadPDF} variant="outline" className="w-full">
-                        Download PDF
-                    </Button>
-                </div>
+            <Resizable
+                defaultSize={{
+                    width: width,
+                    height: height,
+                }}
+                minWidth={200}
+                minHeight={300}
+                maxWidth={500}
+                maxHeight={800}
+                onResize={handleResize}
+                onResizeStop={handleResize}
+                onDragStop={handleDrag}
+                draggableOpts={{ enableUserSelectHack: false }}
 
-                <div className="mb-4 space-y-2">
-                    <Button onClick={onAutoLayout} variant="outline" className="w-full">
-                        Auto Layout (Dagre)
-                    </Button>
-                    <Button onClick={distributeNodesEvenly} variant="outline" className="w-full">
-                        Distribute Evenly
-                    </Button>
-                    {additionalButtons && additionalButtons.map((button, index) => (
-                        <Button key={index} onClick={button.onClick} variant="outline" className="w-full">
-                            {button.label}
+                enableResizing={{
+                    top: false,
+                    right: true,
+                    bottom: true,
+                    left: false,
+                    topRight: false,
+                    bottomRight: true,
+                    bottomLeft: false,
+                    topLeft: false,
+                }}
+            >
+                <div className="rounded-lg bg-white p-4 shadow-lg" style={{ width: '100%', height: '100%' }}>
+                    <div className="mb-4 space-y-2">
+                        <Button onClick={onFitView} variant="outline" className="w-full">
+                            Fit View
                         </Button>
-                    ))}
-                </div>
+                        <Button onClick={onDownloadPDF} variant="outline" className="w-full">
+                            Download PDF
+                        </Button>
+                    </div>
 
-                <div className="space-y-2">
-                    <h3 className="font-medium">Add New Node</h3>
-                    <div className="grid grid-cols-2 gap-1">
-                        <Button onClick={() => onAddNode('event')} variant="outline" size="sm">
-                            Event 📅
+                    <div className="mb-4 space-y-2">
+                        <Button onClick={onAutoLayout} variant="outline" className="w-full">
+                            Auto Layout (Dagre)
                         </Button>
-                        <Button onClick={() => onAddNode('person')} variant="outline" size="sm">
-                            Person 👤
+                        <Button onClick={distributeNodesEvenly} variant="outline" className="w-full">
+                            Distribute Evenly
                         </Button>
-                        <Button onClick={() => onAddNode('cause')} variant="outline" size="sm">
-                            Cause ⚡
-                        </Button>
-                        <Button onClick={() => onAddNode('political')} variant="outline" size="sm">
-                            Political 🏛️
-                        </Button>
-                        <Button onClick={() => onAddNode('economic')} variant="outline" size="sm">
-                            Economic 💰
-                        </Button>
-                        <Button onClick={() => onAddNode('social')} variant="outline" size="sm">
-                            Social 👥
-                        </Button>
-                        <Button onClick={() => onAddNode('cultural')} variant="outline" size="sm">
-                            Cultural 🎭
-                        </Button>
-                        <Button onClick={() => onAddNode('term')} variant="outline" size="sm">
-                            Term 📖
-                        </Button>
-                        <Button onClick={()={() => onAddNode('date')} variant="outline" size="sm">
-                            Date ⏰
-                        </Button>
-                        <Button onClick={() => onAddNode('goal')} variant="outline" size="sm">
-                            Goal 🎯
-                        </Button>
-                        <Button onClick={() => onAddNode('indicator')} variant="outline" size="sm">
-                            Indicator 📊
-                        </Button>
-                        <Button onClick={()={() => onAddNode('country')} variant="outline" size="sm">
-                            Country 🌍
-                        </Button>
-                        <Button onClick={() => onAddNode('other')} variant="outline" size="sm">
-                            Other ❔
+                        {additionalButtons && additionalButtons.map((button, index) => (
+                            <Button key={index} onClick={button.onClick} variant="outline" className="w-full">
+                                {button.label}
+                            </Button>
+                        ))}
+                    </div>
+
+                    <div className="space-y-2">
+                        <h3 className="font-medium">Add New Node</h3>
+                        <div className="grid grid-cols-2 gap-1">
+                            <Button onClick={() => onAddNode('event')} variant="outline" size="sm">
+                                Event 📅
+                            </Button>
+                            <Button onClick={() => onAddNode('person')} variant="outline" size="sm">
+                                Person 👤
+                            </Button>
+                            <Button onClick={() => onAddNode('cause')} variant="outline" size="sm">
+                                Cause ⚡
+                            </Button>
+                            <Button onClick={() => onAddNode('political')} variant="outline" size="sm">
+                                Political 🏛️
+                            </Button>
+                            <Button onClick={() => onAddNode('economic')} variant="outline" size="sm">
+                                Economic 💰
+                            </Button>
+                            <Button onClick={() => onAddNode('social')} variant="outline" size="sm">
+                                Social 👥
+                            </Button>
+                            <Button onClick={() => onAddNode('cultural')} variant="outline" size="sm">
+                                Cultural 🎭
+                            </Button>
+                            <Button onClick={() => onAddNode('term')} variant="outline" size="sm">
+                                Term 📖
+                            </Button>
+                            <Button onClick={() => onAddNode('date')} variant="outline" size="sm">
+                                Date ⏰
+                            </Button>
+                            <Button onClick={() => onAddNode('goal')} variant="outline" size="sm">
+                                Goal 🎯
+                            </Button>
+                            <Button onClick={() => onAddNode('indicator')} variant="outline" size="sm">
+                                Indicator 📊
+                            </Button>
+                            <Button onClick={() => onAddNode('country')} variant="outline" size="sm">
+                                Country 🌍
+                            </Button>
+                            <Button onClick={() => onAddNode('other')} variant="outline" size="sm">
+                                Other ❔
+                            </Button>
+                        </div>
+                    </div>
+
+
+                    <div className="rounded-lg bg-white p-4 shadow-lg">
+                        <h3 className="mb-2 font-medium">Analyze Text</h3>
+                        <Textarea
+                            value={text}
+                            onChange={(e) => setText(e.target.value)}
+                            placeholder="Enter text here for analysis..."
+                            className="mb-2"
+                            dir="rtl"
+                        />
+                        <Button onClick={handleAnalyze} className="w-full" disabled={!text.trim()}>
+                            Analyze
                         </Button>
                     </div>
                 </div>
-
-
-                <div className="rounded-lg bg-white p-4 shadow-lg">
-                    <h3 className="mb-2 font-medium">Analyze Text</h3>
-                    <Textarea
-                        value={text}
-                        onChange={(e) => setText(e.target.value)}
-                        placeholder="Enter text here for analysis..."
-                        className="mb-2"
-                        dir="rtl"
-                    />
-                    <Button onClick={handleAnalyze} className="w-full" disabled={!text.trim()}>
-                        Analyze
-                    </Button>
-                </div>
-            </div>
-        </Resizable>
+            </Resizable>
+        </div>
     );
 };
