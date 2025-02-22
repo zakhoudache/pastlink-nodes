@@ -1,8 +1,10 @@
 // src/components/flow/LeftPanel.tsx
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { NodeType } from '../HistoricalNode';
 import { Button } from '@/components/ui/button';  // Adjust path as necessary
 import { Textarea } from '@/components/ui/textarea'; // Adjust path as necessary
+
+import { Resizable } from 're-resizable'; // Import Resizable component
 
 export interface LeftPanelProps {
     onFitView: () => void;
@@ -24,6 +26,9 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     additionalButtons,
 }) => {
     const [text, setText] = useState('');
+    const [width, setWidth] = useState(300); // Initial width
+    const [height, setHeight] = useState(500); // Initial height
+    const [position, setPosition] = useState({ x: 20, y: 20 }); // Initial position
 
     const handleAnalyze = () => {
         if (text.trim()) {
@@ -32,9 +37,46 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
         }
     };
 
+    const handleResize = (e: any, direction: any, ref: any, d: any) => {
+        setWidth(width + d.width);
+        setHeight(height + d.height);
+    };
+
+    const handleDrag = (e: any, data: any) => {
+        setPosition({ x: data.x, y: data.y });
+    };
+
     return (
-        <div className="absolute left-2 top-2 z-10 flex flex-col gap-2">
-            <div className="rounded-lg bg-white p-4 shadow-lg">
+        <Resizable
+            style={{
+                position: 'absolute',
+                top: position.y,
+                left: position.x,
+                zIndex: 1000, // Ensure it's on top of other elements
+            }}
+            defaultSize={{
+                width: width,
+                height: height,
+            }}
+            minWidth={200}
+            minHeight={300}
+            maxWidth={500}
+            maxHeight={800}
+            onResize={handleResize}
+            onResizeStop={handleResize}
+            draggableOpts={{ enableUserSelectHack: false }}
+            enableResizing={{
+                top: false,
+                right: true,
+                bottom: true,
+                left: false,
+                topRight: false,
+                bottomRight: true,
+                bottomLeft: false,
+                topLeft: false,
+            }}
+        >
+            <div className="rounded-lg bg-white p-4 shadow-lg" style={{ width: '100%', height: '100%' }}>
                 <div className="mb-4 space-y-2">
                     <Button onClick={onFitView} variant="outline" className="w-full">
                         Fit View
@@ -102,21 +144,22 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                         </Button>
                     </div>
                 </div>
-            </div>
 
-            <div className="rounded-lg bg-white p-4 shadow-lg">
-                <h3 className="mb-2 font-medium">Analyze Text</h3>
-                <Textarea
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder="Enter text here for analysis..."
-                    className="mb-2"
-                    dir="rtl"
-                />
-                <Button onClick={handleAnalyze} className="w-full" disabled={!text.trim()}>
-                    Analyze
-                </Button>
+
+                <div className="rounded-lg bg-white p-4 shadow-lg">
+                    <h3 className="mb-2 font-medium">Analyze Text</h3>
+                    <Textarea
+                        value={text}
+                        onChange={(e) => setText(e.target.value)}
+                        placeholder="Enter text here for analysis..."
+                        className="mb-2"
+                        dir="rtl"
+                    />
+                    <Button onClick={handleAnalyze} className="w-full" disabled={!text.trim()}>
+                        Analyze
+                    </Button>
+                </div>
             </div>
-        </div>
+        </Resizable>
     );
 };
