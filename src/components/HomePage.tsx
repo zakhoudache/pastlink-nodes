@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Node, Edge } from '@xyflow/react';
 import Analysis from '../pages/Analysis';
-import Flow from './Flow';
+import Flow from './flow';
 import { getNodePosition } from '../utils/flowUtils';
 import { Toaster, toast } from 'sonner';
 
