@@ -1,38 +1,24 @@
 // src/components/flow/RightPanel.tsx
 import { useState, useEffect } from 'react';
 import { NodeType } from '../HistoricalNode';
-import { Highlight } from '../../utils/highlightStore';
+import { useHighlightStore, Highlight } from '../../utils/highlightStore';
 
 export interface RightPanelProps {
-  highlights: Highlight[];
   onCreateNodeFromHighlight: (highlight: { id: string; text: string }, type: NodeType) => void;
 }
 
-const nodeTypes: NodeType[] = [
-  'event',
-  'person',
-  'cause',
-  'political',
-  'economic',
-  'social',
-  'cultural',
-  'term',
-  'date',
-  'goal',
-  'indicator',
-  'country',
-  'other',
-];
+export function RightPanel({ onCreateNodeFromHighlight }: RightPanelProps) {
+  // Subscribe directly to the highlight store for dynamic data.
+  const highlights = useHighlightStore((state) => state.highlights);
 
-export function RightPanel({ highlights, onCreateNodeFromHighlight }: RightPanelProps) {
   // State to track the selected node type for each highlight.
   const [selectedTypes, setSelectedTypes] = useState<Record<string, NodeType>>({});
 
-  // Initialize selectedTypes state based on the incoming highlights.
+  // Whenever the highlights change, initialize/update selectedTypes for each new highlight.
   useEffect(() => {
     setSelectedTypes((prev) => {
       const newSelectedTypes: Record<string, NodeType> = { ...prev };
-      highlights.forEach((highlight) => {
+      highlights.forEach((highlight: Highlight) => {
         if (!newSelectedTypes[highlight.id]) {
           newSelectedTypes[highlight.id] = 'event';
         }
@@ -42,7 +28,6 @@ export function RightPanel({ highlights, onCreateNodeFromHighlight }: RightPanel
   }, [highlights]);
 
   const handleTypeChange = (highlightId: string, newType: NodeType) => {
-    console.log(`Highlight ${highlightId}: type changed to ${newType}`);
     setSelectedTypes((prev) => ({
       ...prev,
       [highlightId]: newType,
@@ -50,9 +35,8 @@ export function RightPanel({ highlights, onCreateNodeFromHighlight }: RightPanel
   };
 
   const handleCreateNode = (highlight: Highlight) => {
-    const selectedType = selectedTypes[highlight.id] || 'event';
-    console.log(`Creating node for highlight ${highlight.id} with type ${selectedType}`);
-    onCreateNodeFromHighlight({ id: highlight.id, text: highlight.text }, selectedType);
+    const type = selectedTypes[highlight.id] || 'event';
+    onCreateNodeFromHighlight({ id: highlight.id, text: highlight.text }, type);
   };
 
   return (
@@ -69,7 +53,21 @@ export function RightPanel({ highlights, onCreateNodeFromHighlight }: RightPanel
                   onChange={(e) => handleTypeChange(highlight.id, e.target.value as NodeType)}
                   className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {nodeTypes.map((type) => (
+                  {[
+                    'event',
+                    'person',
+                    'cause',
+                    'political',
+                    'economic',
+                    'social',
+                    'cultural',
+                    'term',
+                    'date',
+                    'goal',
+                    'indicator',
+                    'country',
+                    'other'
+                  ].map((type) => (
                     <option key={type} value={type}>
                       {type}
                     </option>
