@@ -28,24 +28,27 @@ serve(async (req) => {
     const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent"
 
     const prompt = `
-      Analyze the following Arabic text and extract:
-      1. Important entities (events, people, concepts, places)
-      2. Relationships between these entities
-      3. Entity types (event, person, cause, political, economic, social, cultural, term, date, goal, indicator, country)
-
-      Return ONLY a JSON object with the following structure (no other text):
+      Analyze the following text and extract entities and relationships.
+      
+      Rules:
+      1. Return ONLY valid JSON, no other text
+      2. Use this exact format:
       {
         "relationships": [
           {
-            "text": "entity name in Arabic",
-            "type": "entity type from the list above"
+            "text": "text of the entity",
+            "type": "type of the entity"
           }
         ]
       }
+      3. Valid types are: event, person, cause, political, economic, social, cultural, term, date, goal, indicator, country
+      4. Do not include any explanations or extra text, just the JSON
 
       Text to analyze:
       ${text}
     `
+
+    console.log('Sending request to Gemini API with prompt:', prompt)
 
     const response = await fetch(GEMINI_API_URL, {
       method: 'POST',
@@ -67,42 +70,57 @@ serve(async (req) => {
     })
 
     if (!response.ok) {
-      console.error('Gemini API Error:', await response.text())
+      const errorText = await response.text()
+      console.error('Gemini API Error:', errorText)
       throw new Error('Failed to analyze text with Gemini API')
     }
 
     const data = await response.json()
     
     if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      console.error('Invalid API response structure:', JSON.stringify(data))
       throw new Error('Invalid API response structure')
     }
 
     const responseText = data.candidates[0].content.parts[0].text.trim()
+    console.log('Raw Gemini response:', responseText)
     
     try {
-      // Parse the response as JSON and validate its structure
+      // Attempt to parse the response text as JSON
       const parsedResponse = JSON.parse(responseText)
       
-      if (!Array.isArray(parsedResponse.relationships)) {
+      // Validate the response structure
+      if (!parsedResponse || !Array.isArray(parsedResponse.relationships)) {
+        console.error('Invalid response format:', responseText)
         throw new Error('Invalid response format: relationships array missing')
       }
 
-      // Validate each relationship object
-      parsedResponse.relationships = parsedResponse.relationships.filter(rel => 
-        rel.text && rel.type &&
-        typeof rel.text === 'string' &&
-        typeof rel.type === 'string'
-      )
+      // Clean and validate each relationship
+      const validatedRelationships = parsedResponse.relationships.filter(rel => {
+        const isValid = rel && 
+          typeof rel.text === 'string' && 
+          typeof rel.type === 'string' &&
+          rel.text.trim() !== '' &&
+          ['event', 'person', 'cause', 'political', 'economic', 'social', 
+           'cultural', 'term', 'date', 'goal', 'indicator', 'country'].includes(rel.type)
+        
+        if (!isValid) {
+          console.warn('Filtered out invalid relationship:', rel)
+        }
+        return isValid
+      })
 
-      console.log('Successfully analyzed text:', JSON.stringify(parsedResponse, null, 2))
+      const result = { relationships: validatedRelationships }
+      console.log('Final validated response:', JSON.stringify(result, null, 2))
 
-      return new Response(JSON.stringify(parsedResponse), {
+      return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
 
     } catch (error) {
-      console.error('Failed to parse Gemini response:', error)
-      throw new Error('Failed to parse analysis results')
+      console.error('Failed to parse or validate response:', error)
+      console.error('Response text that failed to parse:', responseText)
+      throw new Error(`Failed to parse analysis results: ${error.message}`)
     }
 
   } catch (error) {
