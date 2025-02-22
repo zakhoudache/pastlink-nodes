@@ -98,56 +98,67 @@ const FlowContent = () => {
 
   const downloadAsPDF = useCallback(() => {
     if (nodes.length === 0) return;
-
+  
+    // الحصول على العنصر الرئيسي للرسم
     const flowElement = document.querySelector('.react-flow') as HTMLElement | null;
     if (!flowElement) return;
-
-    const flowWrapper = flowElement.querySelector('.react-flow__viewport') as HTMLElement | null;
-    if (!flowWrapper) return;
-
+  
+    // الحصول على العنصر الذي يحتوي على العرض الفعلي (قد يكون .react-flow__viewport أو العنصر الرئيسي نفسه)
+    const flowWrapper =
+      flowElement.querySelector('.react-flow__viewport') as HTMLElement | null || flowElement;
+  
     const nodesBounds = getNodesBounds(nodes);
     const padding = 50;
     const width = nodesBounds.width + padding * 2;
     const height = nodesBounds.height + padding * 2;
-
-    const currentTransform = flowWrapper.style.transform;
-    const currentWidth = flowWrapper.style.width;
-    const currentHeight = flowWrapper.style.height;
-
+  
+    // حفظ الإعدادات الحالية
+    const originalStyle = {
+      width: flowWrapper.style.width,
+      height: flowWrapper.style.height,
+      transform: flowWrapper.style.transform,
+    };
+  
+    // تعديل الأنماط مؤقتًا لضمان التقاط المحتوى بالكامل
     flowWrapper.style.width = `${width}px`;
     flowWrapper.style.height = `${height}px`;
-    flowWrapper.style.transform = 'translate(0,0) scale(1)';
-
-    toPng(flowWrapper, {
-      backgroundColor: '#ffffff',
-      width,
-      height,
-      style: {
-        width: `${width}px`,
-        height: `${height}px`,
-      },
-      filter: (node) =>
-        node.classList?.contains('react-flow__node') ||
-        node.classList?.contains('react-flow__edge') ||
-        node.classList?.contains('react-flow__edge-path') ||
-        node.classList?.contains('react-flow__connection-path')
-    })
-      .then((dataUrl) => {
-        const pdf = new jsPDF({
-          orientation: width > height ? 'landscape' : 'portrait',
-          unit: 'px',
-          format: [width, height]
+    flowWrapper.style.transform = 'translate(0, 0) scale(1)';
+  
+    // الانتظار حتى يتم تحديث التخطيط
+    requestAnimationFrame(() => {
+      toPng(flowWrapper, {
+        backgroundColor: '#ffffff',
+        width,
+        height,
+        style: {
+          width: `${width}px`,
+          height: `${height}px`,
+        },
+        // يمكن تجربة إزالة الفلتر أو تعديله إذا كان يمنع التقاط بعض العناصر
+        // filter: (node) => true,
+      })
+        .then((dataUrl) => {
+          const pdf = new jsPDF({
+            orientation: width > height ? 'landscape' : 'portrait',
+            unit: 'px',
+            format: [width, height],
+          });
+          pdf.addImage(dataUrl, 'PNG', padding, padding, width - padding * 2, height - padding * 2);
+          pdf.save('historical-flow.pdf');
+        })
+        .catch((err) => {
+          console.error('Failed to generate PDF:', err);
+          toast.error('Failed to generate PDF');
+        })
+        .finally(() => {
+          // إعادة الإعدادات الأصلية بعد الانتهاء
+          flowWrapper.style.width = originalStyle.width;
+          flowWrapper.style.height = originalStyle.height;
+          flowWrapper.style.transform = originalStyle.transform;
         });
-
-        pdf.addImage(dataUrl, 'PNG', padding, padding, width - padding * 2, height - padding * 2);
-        pdf.save('historical-flow.pdf');
-
-        flowWrapper.style.transform = currentTransform;
-        flowWrapper.style.width = currentWidth;
-        flowWrapper.style.height = currentHeight;
-      });
+    });
   }, [nodes]);
-
+  
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as Node<HistoricalNodeData>[]),
     []
