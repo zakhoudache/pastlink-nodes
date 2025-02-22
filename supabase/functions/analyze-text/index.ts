@@ -11,30 +11,34 @@ const VALID_RELATIONSHIP_TYPES = [
 ];
 
 Deno.serve(async (req) => {
+  // Handle preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Parse the request body
     const requestBody = await req.json();
     const { text, temperature } = requestBody;
 
+    // Validate the 'text' input
     if (!text?.trim()) {
       return new Response(
-        JSON.stringify({
-          error: "حقل 'text' مطلوب ولا يمكن أن يكون فارغًا."
-        }), {
+        JSON.stringify({ error: "The 'text' field is required and cannot be empty." }),
+        {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
 
+    // Retrieve the Gemini API key from the environment variables
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
-      throw new Error("لم يتم تعيين متغير البيئة GEMINI_API_KEY.");
+      throw new Error("The GEMINI_API_KEY environment variable is not set.");
     }
-   
+
+    // Initialize the Google Generative AI model
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
       model: 'gemini-pro',
@@ -46,45 +50,46 @@ Deno.serve(async (req) => {
       }
     });
 
-    // تحسين النص التحفيزي بإضافة تعليمات مفصلة
-    const prompt = `قم بتحليل النص التاريخي التالي واستخراج الكيانات والعلاقات بطريقة دقيقة ومنظمة. يجب أن تستخرج الأحداث والشخصيات والمواقع والمصطلحات الرئيسية بالإضافة إلى العلاقات بين هذه الكيانات، دون إضافة أي نص أو ملاحظات إضافية خارج هيكل JSON المحدد.
+    // Construct the prompt for the Gemini model
+    const prompt = `Analyze the following historical text and extract entities and relationships in a precise and organized manner.  You must extract key events, people, locations, and terms, as well as the relationships between these entities.  Do not add any additional text or notes outside of the specified JSON structure.
 
-يجب أن يكون الإخراج كائن JSON على النحو التالي:
+The output should be a JSON object with the following structure:
 {
   "events": [
     {
-      "date": "التاريخ (يفضل تنسيق YYYY أو YYYY-MM-DD)",
-      "description": "وصف مختصر ومفصل للحدث"
+      "date": "Date (preferably in YYYY or YYYY-MM-DD format)",
+      "description": "Concise and detailed description of the event"
     }
   ],
-  "people": ["أسماء الشخصيات الرئيسية"],
-  "locations": ["أسماء المواقع الجغرافية"],
-  "terms": ["المفاهيم والمصطلحات التاريخية الأساسية"],
+  "people": ["List of key people"],
+  "locations": ["List of geographical locations"],
+  "terms": ["List of fundamental historical concepts and terms"],
   "relationships": [
     {
-      "source": "اسم الكيان الأول (شخص، حدث، موقع)",
-      "target": "اسم الكيان المرتبط",
-      "type": "نوع العلاقة (يجب أن يكون واحداً من: ${VALID_RELATIONSHIP_TYPES.join(', ')})"
+      "source": "Name of the first entity (person, event, location)",
+      "target": "Name of the related entity",
+      "type": "Type of relationship (must be one of: ${VALID_RELATIONSHIP_TYPES.join(', ')})"
     }
   ]
 }
 
-### الإرشادات والشروط:
-1. لا تقم بإضافة أي نص أو شرح إضافي خارج هيكل JSON المحدد.
-2. تأكد من أن جميع التواريخ متسقة في التنسيق.
-3. يجب أن تحتوي كل قائمة على عنصر واحد على الأقل؛ إذا لم تتوفر معلومات لبعض الفئات، يمكنك تركها فارغة.
-4. استخرج الكيانات والعلاقات مباشرةً من النص التاريخي دون استنتاجات أو إضافات غير موجودة.
-5. إذا كانت العلاقة المستخرجة لا تتطابق مع الأنواع المحددة، فاستخدم "related-to" كافتراضي.
-6. يجب أن تكون الأوصاف دقيقة، مفصلة، ومختصرة.
-7. لا تقم بتكرار الكيانات؛ إذا ظهر الكيان أكثر من مرة، أدرجه مرة واحدة في القائمة.
+### Instructions and Conditions:
+1. Do not add any text or explanations outside the specified JSON structure.
+2. Ensure all dates are consistent in format.
+3. Each list must contain at least one element; if information for some categories is not available, leave them empty.
+4. Extract entities and relationships directly from the historical text without inferences or additions.
+5. If the extracted relationship does not match the specified types, use "related-to" as the default.
+6. Descriptions should be accurate, detailed, and concise.
+7. Do not repeat entities; if an entity appears more than once, include it only once in the list.
 
-**النص للتحليل:** ${text}`;
+**Text to analyze:** ${text}`;
 
+    // Generate content using the Gemini model
     const result = await model.generateContent(prompt);
     const response = await result.response;
     let responseText = response.text().trim();
-    
-    // محاولة استخراج JSON إذا كان محاطًا بعلامات تنسيق
+
+    // Attempt to extract JSON if surrounded by formatting markers
     if (!responseText.startsWith('{')) {
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -96,24 +101,25 @@ Deno.serve(async (req) => {
     try {
       jsonResponse = JSON.parse(responseText);
     } catch (error: any) {
-      console.error("فشل تحليل استجابة API إلى JSON:", error);
-      console.error("النص المستلم:", responseText);
-      throw new Error(`فشل تحليل استجابة API إلى JSON: ${error.message}`);
+      console.error("Failed to parse API response to JSON:", error);
+      console.error("Received text:", responseText);
+      throw new Error(`Failed to parse API response to JSON: ${error.message}`);
     }
-   
+
+    // Validate and sanitize the JSON response
     try {
-      // التحقق من وجود القوائم
+      // Ensure all expected lists exist
       ['events', 'people', 'locations', 'terms', 'relationships'].forEach(key => {
         if (!Array.isArray(jsonResponse[key])) {
           jsonResponse[key] = [];
         }
       });
 
-      // تنظيف العلاقات والتحقق من صحتها
+      // Sanitize and validate relationships
       jsonResponse.relationships = jsonResponse.relationships
-        .filter((rel: any) => 
-          rel?.source && 
-          rel?.target && 
+        .filter((rel: any) =>
+          rel?.source &&
+          rel?.target &&
           rel?.type &&
           typeof rel.source === 'string' &&
           typeof rel.target === 'string' &&
@@ -121,13 +127,12 @@ Deno.serve(async (req) => {
         )
         .map((rel: any) => ({
           ...rel,
-          // تحويل نوع العلاقة إلى الصيغة الصحيحة أو القيمة الافتراضية
-          type: VALID_RELATIONSHIP_TYPES.includes(rel.type.toLowerCase().replace(/ /g, '-')) 
+          type: VALID_RELATIONSHIP_TYPES.includes(rel.type.toLowerCase().replace(/ /g, '-'))
             ? rel.type.toLowerCase().replace(/ /g, '-')
-            : 'related-to'
+            : 'related-to'  // Use default if invalid
         }));
 
-      // تنظيف الأحداث والتحقق من صحتها
+      // Sanitize and validate events
       jsonResponse.events = jsonResponse.events
         .filter((event: any) =>
           event?.date &&
@@ -136,37 +141,46 @@ Deno.serve(async (req) => {
           typeof event.description === 'string'
         );
 
-      // التأكد من أن القوائم ليست فارغة
+      // Provide a default relationship if none are found
       if (jsonResponse.relationships.length === 0) {
+        // Provide more robust handling for cases where the required array is empty.
+        // Use a fallback in cases where arrays might be empty
+        const source = jsonResponse.people[0] || jsonResponse.locations[0] || "Unknown";
+        const target = jsonResponse.terms[0] || "Event";
+
         jsonResponse.relationships.push({
-          source: jsonResponse.people[0] || jsonResponse.locations[0] || "غير معروف",
-          target: jsonResponse.terms[0] || "حدث",
+          source: source,
+          target: target,
           type: "related-to"
         });
       }
 
+      // Respond with the processed JSON data
       return new Response(
-        JSON.stringify(jsonResponse), {
+        JSON.stringify(jsonResponse),
+        {
           status: 200,
-          headers: { 
-            ...corsHeaders, 
+          headers: {
+            ...corsHeaders,
             "Content-Type": "application/json",
-            "Cache-Control": "no-cache" 
+            "Cache-Control": "no-cache"
           },
         }
       );
-
     } catch (error: any) {
-      throw new Error(`خطأ أثناء التحقق من الاستجابة: ${error.message}`);
+      console.error("Error during response validation:", error);
+      throw new Error(`Error during response validation: ${error.message}`);
     }
 
   } catch (error: any) {
-    console.error("خطأ:", error);
+    // Handle any errors that occurred during processing
+    console.error("Error:", error);
     return new Response(
       JSON.stringify({
-        error: "حدث خطأ أثناء المعالجة",
+        error: "An error occurred during processing.",
         details: error.message
-      }), {
+      }),
+      {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
