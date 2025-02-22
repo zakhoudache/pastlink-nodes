@@ -1,3 +1,6 @@
+// (Your existing RelationshipsTable component code remains the same)
+
+// Analysis.tsx
 'use client';
 
 import React, { useCallback, useState } from "react";
@@ -18,6 +21,14 @@ interface Relationship {
   type: string;
 }
 
+interface ApiResponse {
+  events: Array<{date: string; description: string}>;
+  people: string[];
+  locations: string[];
+  terms: string[];
+  relationships: Relationship[];
+}
+
 export default function Analysis() {
   const [text, setText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +45,7 @@ export default function Analysis() {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('analyze-text', {
+      const { data, error } = await supabase.functions.invoke<ApiResponse>('analyze-text', {
         body: { 
           text,
           temperature: temperature[0]
@@ -50,7 +61,6 @@ export default function Analysis() {
       setRelationships(data.relationships);
 
       if (autoHighlight) {
-        // Highlight both source and target entities
         data.relationships.forEach((rel: Relationship) => {
           [rel.source, rel.target].forEach(entity => {
             const startIndex = text.indexOf(entity);
@@ -116,22 +126,19 @@ export default function Analysis() {
         {isLoading ? "Analyzing..." : "Analyze Text"}
       </Button>
 
-      <div className="space-y-2">
-        <h3 className="text-lg font-medium">Highlights</h3>
-        {isLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-[250px]" />
-            <Skeleton className="h-4 w-[200px]" />
-            <Skeleton className="h-4 w-[300px]" />
-          </div>
-        ) : relationships.length > 0 ? (
-          <div className="border rounded-lg p-4">
-            <RelationshipsTable relationships={relationships} />
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No relationships yet</p>
-        )}
-      </div>
+      {isLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-[250px]" />
+          <Skeleton className="h-4 w-[200px]" />
+          <Skeleton className="h-4 w-[300px]" />
+        </div>
+      ) : relationships.length > 0 ? (
+        <div className="border rounded-lg p-4">
+          <RelationshipsTable relationships={relationships} />
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">No relationships found</p>
+      )}
     </div>
   );
 }

@@ -1,16 +1,15 @@
+// supabase/functions/analyze-text/index.ts
 import { corsHeaders } from "../shared-one/cors.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@^0.3.0';
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
     const requestBody = await req.json();
-    const { text } = requestBody;
+    const { text, temperature } = requestBody;
 
     if (!text || text.trim() === "") {
       return new Response("Error: Missing or empty required field 'text'.", {
@@ -19,35 +18,36 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Initialize Gemini with your API key
-    const apiKey = "AIzaSyA1V7Klm9lyEPtw6PViEeeTPoCTwwJQt5E" || Deno.env.get("GEMINI_API_KEY");
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
       throw new Error("GEMINI_API_KEY environment variable not set");
     }
     
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-pro',
+      generationConfig: {
+        temperature: temperature || 0.7
+      }
+    });
 
-    // Create a structured prompt for historical analysis
     const prompt = `Analyze this historical text and extract the following information. Return ONLY the JSON object without any markdown formatting or explanation:
     {
       "events": [{"date": "YYYY", "description": "event description"}],
       "people": ["person name"],
       "locations": ["location name"],
       "terms": ["key term"],
-      "relationships": [{"from": "entity1", "to": "entity2", "type": "relationship type"}]
+      "relationships": [{"source": "entity1", "target": "entity2", "type": "relationship type"}]
     }
     
     Text to analyze: ${text}`;
 
-    // Generate content using Gemini
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const responseText = response.text().trim();
 
     let jsonResponse;
     try {
-      // Parse the response directly as JSON
       jsonResponse = JSON.parse(responseText);
     } catch (error: any) {
       console.error("Failed to parse API response as JSON:", error);
@@ -75,9 +75,9 @@ Deno.serve(async (req) => {
 
       // Validate each relationship object
       jsonResponse.relationships = jsonResponse.relationships.filter((rel: any) => 
-        rel.from && rel.to && rel.type &&
-        typeof rel.from === 'string' &&
-        typeof rel.to === 'string' &&
+        rel.source && rel.target && rel.type &&
+        typeof rel.source === 'string' &&
+        typeof rel.target === 'string' &&
         typeof rel.type === 'string'
       );
 
@@ -108,3 +108,5 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+// RelationshipsTable.tsx
