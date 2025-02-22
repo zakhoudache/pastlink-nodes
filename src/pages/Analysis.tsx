@@ -116,10 +116,6 @@ export default function Analysis() {
         {isLoading ? "Analyzing..." : "Analyze Text"}
       </Button>
 
-      {relationships.length > 0 && (
-        <RelationshipsTable relationships={relationships} />
-      )}
-
       <div className="space-y-2">
         <h3 className="text-lg font-medium">Highlights</h3>
         {isLoading ? (
@@ -128,25 +124,12 @@ export default function Analysis() {
             <Skeleton className="h-4 w-[200px]" />
             <Skeleton className="h-4 w-[300px]" />
           </div>
-        ) : highlights.length > 0 ? (
+        ) : relationships.length > 0 ? (
           <div className="border rounded-lg p-4">
-            {highlights.map((highlight) => (
-              <div key={highlight.id} className="flex items-center justify-between py-2">
-                <span>{highlight.text}</span>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => {
-                    // Add your highlight action here
-                  }}
-                >
-                  Use
-                </Button>
-              </div>
-            ))}
+            <RelationshipsTable relationships={relationships} />
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No highlights yet</p>
+          <p className="text-sm text-muted-foreground">No relationships yet</p>
         )}
       </div>
     </div>
