@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCallback, useState, useEffect } from 'react';
@@ -30,7 +31,6 @@ import { useHighlightStore } from '../utils/highlightStore';
 import { LeftPanel } from '../components/flow/LeftPanel';
 import { RightPanel } from '../components/flow/RightPanel';
 
-
 const edgeTypes: EdgeTypes = {
     historical: HistoricalEdge,
 };
@@ -59,7 +59,7 @@ const FlowContent = () => {
     const [edgeSourceNode, setEdgeSourceNode] = useState<string | null>(null);
     const [edgeTargetNode, setEdgeTargetNode] = useState<string | null>(null);
 
-    const { highlights, removeHighlight, setHighlights } = useHighlightStore(); // Include setHighlights
+    const { highlights, removeHighlight, setHighlights } = useHighlightStore();
     const { setViewport } = useReactFlow();
 
     useEffect(() => {
@@ -79,85 +79,44 @@ const FlowContent = () => {
         return () => window.removeEventListener('updateNodeData', handleNodeUpdate);
     }, []);
 
+    const fitView = useCallback(() => {
+        if (nodes.length === 0) return;
+        const bounds = getNodesBounds(nodes);
+        const viewport = getViewportForBounds(
+            bounds,
+            {
+                width: window.innerWidth,
+                height: window.innerHeight,
+            },
+            {
+                minZoom: 0.5,
+                maxZoom: 2,
+            },
+            0.5,
+            [24, 24], // Padding
+            { x: 0, y: 0 } // Optional center
+        );
+        setViewport(viewport);
+    }, [nodes, setViewport]);
 
-    const analyzeText = async (text: string) => {
-        try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/analyze-text`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    // Add authorization headers if needed
-                },
-                body: JSON.stringify({ text }),
-            });
-
-            if (!response.ok) {
-              const errorData = await response.json(); // Get error details
-              throw new Error(`Analysis failed: ${response.status} - ${errorData.error}`);
-            }
-
-            const data = await response.json();
-            // Update highlights based on the response
-            if (data.relationships && Array.isArray(data.relationships)) {
-                const newHighlights = data.relationships.map((item: any) => ({
-                    id: `${Date.now()}-${item.text}`, // Create a unique ID
-                    text: item.text,
-                    type: item.type,
-                }));
-                setHighlights(newHighlights);
-            }
-            alert(data.summary); // Display the summary
-
-        } catch (error) {
-             if (error instanceof Error) {
-                console.error('Analysis error:', error.message);
-                alert(`Error: ${error.message}`);
-            } else {
-                console.error('Analysis error:', error);
-                alert('An unexpected error occurred during analysis.');
-            }
-        }
-    };
-
-        const fitView = useCallback(() => {
-    if (nodes.length === 0) return;
-    const bounds = getNodesBounds(nodes);
-    const viewport = getViewportForBounds(
-        bounds,
-        {
-            width: window.innerWidth,
-            height: window.innerHeight,
-        },
-        {
-            minZoom: 0.5,
-            maxZoom: 2,
-        },
-        0.5
-    ) as Viewport;
-    setViewport(viewport);
-}, [nodes, setViewport]);
     const downloadAsPDF = useCallback(() => {
         if (nodes.length === 0) return;
 
         const flowElement = document.querySelector('.react-flow') as HTMLElement | null;
         if (!flowElement) return;
 
-        // Get the flow wrapper element
         const flowWrapper = flowElement.querySelector('.react-flow__viewport') as HTMLElement | null;
         if (!flowWrapper) return;
 
-        // Calculate the bounds of all nodes
         const nodesBounds = getNodesBounds(nodes);
         const padding = 50;
         const width = nodesBounds.width + (padding * 2);
         const height = nodesBounds.height + (padding * 2);
 
-        // Save current styles
         const currentTransform = flowWrapper.style.transform;
         const currentWidth = flowWrapper.style.width;
         const currentHeight = flowWrapper.style.height;
 
-        // Temporarily modify the wrapper
         flowWrapper.style.width = `${width}px`;
         flowWrapper.style.height = `${height}px`;
         flowWrapper.style.transform = 'translate(0,0) scale(1)';
@@ -170,15 +129,12 @@ const FlowContent = () => {
                 width: `${width}px`,
                 height: `${height}px`,
             },
-            filter: (node) => {
-                // Only include nodes and edges
-                return (
-                    node.classList?.contains('react-flow__node') ||
-                    node.classList?.contains('react-flow__edge') ||
-                    node.classList?.contains('react-flow__edge-path') ||
-                    node.classList?.contains('react-flow__connection-path')
-                );
-            }
+            filter: (node) => (
+                node.classList?.contains('react-flow__node') ||
+                node.classList?.contains('react-flow__edge') ||
+                node.classList?.contains('react-flow__edge-path') ||
+                node.classList?.contains('react-flow__connection-path')
+            )
         })
             .then((dataUrl) => {
                 const pdf = new jsPDF({
@@ -190,7 +146,6 @@ const FlowContent = () => {
                 pdf.addImage(dataUrl, 'PNG', padding, padding, width - (padding * 2), height - (padding * 2));
                 pdf.save('historical-flow.pdf');
 
-                // Restore original styles
                 flowWrapper.style.transform = currentTransform;
                 flowWrapper.style.width = currentWidth;
                 flowWrapper.style.height = currentHeight;
@@ -198,12 +153,12 @@ const FlowContent = () => {
     }, [nodes]);
 
     const onNodesChange = useCallback(
-        (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
+        (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as Node<HistoricalNodeData>[]),
         []
     );
 
     const onEdgesChange = useCallback(
-        (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+        (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds) as Edge<HistoricalEdgeData>[]),
         []
     );
 
@@ -265,7 +220,6 @@ const FlowContent = () => {
 
     if (!isMounted) return null;
 
-
     return (
         <div className="h-screen w-full">
             <ReactFlow
@@ -285,7 +239,34 @@ const FlowContent = () => {
                     onFitView={fitView}
                     onDownloadPDF={downloadAsPDF}
                     onAddNode={addNode}
-                    onAnalyzeText={analyzeText} // Pass analyzeText to LeftPanel
+                    onAnalyzeText={async (text) => {
+                        try {
+                            const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/analyze-text`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ text }),
+                            });
+
+                            if (!response.ok) {
+                                throw new Error(`Analysis failed: ${response.status}`);
+                            }
+
+                            const data = await response.json();
+                            if (data.relationships && Array.isArray(data.relationships)) {
+                                const newHighlights = data.relationships.map((item: any) => ({
+                                    id: `${Date.now()}-${Math.random()}`,
+                                    text: item.text,
+                                    type: item.type,
+                                }));
+                                setHighlights(newHighlights);
+                            }
+                        } catch (error) {
+                            console.error('Analysis error:', error);
+                            alert('An error occurred during analysis');
+                        }
+                    }}
                 />
                 <RightPanel
                     highlights={highlights}
