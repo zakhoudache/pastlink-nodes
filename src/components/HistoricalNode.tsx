@@ -89,11 +89,9 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editedData, setEditedData] = useState<HistoricalNodeData>(data);
   const [showControls, setShowControls] = useState(false);
-  const prevOpen = useRef(false);
-
-  // State to control the adjustable dimensions of the card
   const [cardWidth, setCardWidth] = useState(160);
   const [cardHeight, setCardHeight] = useState(200);
+  const prevOpen = useRef(false);
 
   useEffect(() => {
     if (!prevOpen.current && isDialogOpen) {
@@ -115,14 +113,13 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
     setIsDialogOpen(false);
   }, [id, editedData]);
 
-  // Horizontal resizing (adjusts width)
   const handleHorizontalResize = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     event.stopPropagation();
     const startX = event.clientX;
     const startWidth = cardWidth;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = Math.max(100, startWidth + e.clientX - startX);
+      const newWidth = Math.min(400, Math.max(120, startWidth + e.clientX - startX));
       setCardWidth(newWidth);
     };
 
@@ -135,14 +132,13 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
     window.addEventListener('mouseup', handleMouseUp);
   }, [cardWidth]);
 
-  // Vertical resizing (adjusts height)
   const handleVerticalResize = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     event.stopPropagation();
     const startY = event.clientY;
     const startHeight = cardHeight;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const newHeight = Math.max(100, startHeight + e.clientY - startY);
+      const newHeight = Math.min(500, Math.max(120, startHeight + e.clientY - startY));
       setCardHeight(newHeight);
     };
 
@@ -172,7 +168,11 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
           dir="rtl"
           onDoubleClick={handleDoubleClick}
           tabIndex={0}
-          style={{ width: cardWidth, height: cardHeight }}
+          style={{ 
+            width: cardWidth, 
+            height: cardHeight,
+            overflow: 'auto'
+          }}
         >
           <Handle
             type="target"
@@ -181,7 +181,6 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
             className="!bg-muted-foreground"
           />
           <div className="p-4 relative">
-            {/* Control button */}
             <button
               onClick={() => setShowControls((prev) => !prev)}
               className="absolute top-1 right-1 p-1 bg-white rounded-full shadow hover:bg-gray-100 z-20"
@@ -189,8 +188,6 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
             >
               ⋮
             </button>
-
-            {/* Dropdown controls */}
             {showControls && (
               <div className="absolute top-8 right-1 bg-white border border-gray-200 shadow-lg rounded-md z-30">
                 <button
@@ -213,7 +210,6 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
                 </button>
               </div>
             )}
-
             <div className="flex items-center gap-2 mb-3">
               <span className="text-xl" role="img" aria-label={typeLabels[type]}>
                 {typeIcons[type]}
@@ -234,15 +230,17 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
             className="!bg-muted-foreground"
           />
         </Card>
-        {/* Horizontal resize handle (right edge) */}
         <div
           onMouseDown={handleHorizontalResize}
-          className="absolute right-[-5px] top-1/2 transform -translate-y-1/2 w-4 h-8 cursor-ew-resize bg-gray-400 hover:bg-gray-500 rounded-md shadow-md transition-colors duration-200"
+          className="absolute right-[-5px] top-1/2 transform -translate-y-1/2 w-2 h-12 cursor-ew-resize 
+            bg-gray-400 hover:bg-blue-500 rounded-full shadow-md transition-colors duration-200 opacity-70 
+            hover:opacity-100"
         />
-        {/* Vertical resize handle (bottom edge) */}
         <div
           onMouseDown={handleVerticalResize}
-          className="absolute bottom-[-5px] left-1/2 transform -translate-x-1/2 w-8 h-4 cursor-ns-resize bg-gray-400 hover:bg-gray-500 rounded-md shadow-md transition-colors duration-200"
+          className="absolute bottom-[-5px] left-1/2 transform -translate-x-1/2 w-12 h-2 cursor-ns-resize 
+            bg-gray-400 hover:bg-blue-500 rounded-full shadow-md transition-colors duration-200 opacity-70 
+            hover:opacity-100"
         />
       </div>
 
