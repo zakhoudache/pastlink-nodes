@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; //Import Select
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export type NodeType =
   | 'event'
@@ -90,6 +90,9 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
   const [editedData, setEditedData] = useState<HistoricalNodeData>(data);
   const prevOpen = useRef(false);
 
+  // State to control the adjustable width of the card (default: 160px)
+  const [cardWidth, setCardWidth] = useState(160);
+
   useEffect(() => {
     if (!prevOpen.current && isDialogOpen) {
       setEditedData(data);
@@ -110,6 +113,26 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
     setIsDialogOpen(false);
   }, [id, editedData]);
 
+  // Resizing logic using a drag handle
+  const handleMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    const startX = event.clientX;
+    const startWidth = cardWidth;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.max(100, startWidth + e.clientX - startX);
+      setCardWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }, [cardWidth]);
+
   if (!data) {
     return <div>خطأ: لم يتم توفير البيانات</div>;
   }
@@ -119,37 +142,45 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
 
   return (
     <>
-      <Card
-        className={`w-40 shadow-sm ${colors.bg} ${colors.border} border-2 ${selected ? 'ring-2 ring-blue-500' : ''}`}
-        dir="rtl"
-        onDoubleClick={handleDoubleClick}
-        tabIndex={0} //Make it focusable
-      >
-        <Handle
-          type="target"
-          position={Position.Top}
-          isConnectable={isConnectable}
-          className="!bg-muted-foreground"
-        />
-        <div className="p-3">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xl" role="img" aria-label={typeLabels[type]}>
-              {typeIcons[type]}
-            </span>
-            <div>
-              <div className="text-xs font-medium text-muted-foreground">{typeLabels[type]}</div>
-              <div className="font-medium">{label}</div>
+      <div className="relative inline-block">
+        <Card
+          className={`shadow-sm ${colors.bg} ${colors.border} border-2 ${selected ? 'ring-2 ring-blue-500' : ''} transition-all duration-300`}
+          dir="rtl"
+          onDoubleClick={handleDoubleClick}
+          tabIndex={0}
+          style={{ width: cardWidth }}
+        >
+          <Handle
+            type="target"
+            position={Position.Top}
+            isConnectable={isConnectable}
+            className="!bg-muted-foreground"
+          />
+          <div className="p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xl" role="img" aria-label={typeLabels[type]}>
+                {typeIcons[type]}
+              </span>
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">{typeLabels[type]}</div>
+                <div className="font-medium">{label}</div>
+              </div>
             </div>
+            {description && <p className="text-sm text-muted-foreground">{description}</p>}
           </div>
-          {description && <p className="text-sm text-muted-foreground">{description}</p>}
-        </div>
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          isConnectable={isConnectable}
-          className="!bg-muted-foreground"
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            isConnectable={isConnectable}
+            className="!bg-muted-foreground"
+          />
+        </Card>
+        {/* Resize handle placed at the bottom-right corner */}
+        <div
+          onMouseDown={handleMouseDown}
+          className="absolute bottom-0 right-0 w-4 h-4 cursor-ew-resize bg-gray-300 hover:bg-gray-400"
         />
-      </Card>
+      </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
@@ -173,7 +204,7 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
                 className="mt-1"
               />
             </div>
-            <div> {/* Select for changing node type */}
+            <div>
               <label className="text-sm font-medium">Type</label>
               <Select onValueChange={(value) => setEditedData((prev) => ({ ...prev, type: value as NodeType }))} defaultValue={editedData.type}>
                 <SelectTrigger>
