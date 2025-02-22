@@ -1,6 +1,7 @@
+// src/components/flow/LeftPanel.tsx
 import { NodeType } from '../HistoricalNode';
-import { Button } from '../ui/button';
-import { Textarea } from '../ui/textarea';
+import { Button } from '../../components/ui/button';  // Correct UI library path
+import { Textarea } from '../../components/ui/textarea'; // Correct UI library path
 import { useState } from 'react';
 
 export interface LeftPanelProps {
@@ -8,10 +9,9 @@ export interface LeftPanelProps {
   onDownloadPDF: () => void;
   onAddNode: (type: NodeType) => void;
   onAnalyzeText: (text: string) => Promise<void>;
-  className?: string; // Add className prop
 }
 
-export function LeftPanel({ onFitView, onDownloadPDF, onAddNode, onAnalyzeText, className }: LeftPanelProps) {
+export function LeftPanel({ onFitView, onDownloadPDF, onAddNode, onAnalyzeText }: LeftPanelProps) {
   const [text, setText] = useState('');
 
   const handleAnalyze = () => {
@@ -22,72 +22,72 @@ export function LeftPanel({ onFitView, onDownloadPDF, onAddNode, onAnalyzeText, 
   };
 
   return (
-    <div className={`absolute left-2 top-2 z-10 flex flex-col gap-2 ${className}`}> {/* Apply className */}
+    <div className="absolute left-2 top-2 z-10 flex flex-col gap-2">
       <div className="rounded-lg bg-white p-4 shadow-lg">
         <div className="mb-4 space-y-2">
           <Button onClick={onFitView} variant="outline" className="w-full">
-            تركيز العرض
+            Fit View
           </Button>
           <Button onClick={onDownloadPDF} variant="outline" className="w-full">
-            تحميل PDF
+            Download PDF
           </Button>
         </div>
         <div className="space-y-2">
-          <h3 className="font-medium">إضافة عنصر جديد</h3>
+          <h3 className="font-medium">Add New Node</h3>
           <div className="grid grid-cols-2 gap-1">
             <Button onClick={() => onAddNode('event')} variant="outline" size="sm">
-              حدث 📅
+              Event 📅
             </Button>
             <Button onClick={() => onAddNode('person')} variant="outline" size="sm">
-              شخصية 👤
+              Person 👤
             </Button>
             <Button onClick={() => onAddNode('cause')} variant="outline" size="sm">
-              سبب ⚡
+              Cause ⚡
             </Button>
             <Button onClick={() => onAddNode('political')} variant="outline" size="sm">
-              سياسي 🏛️
+              Political 🏛️
             </Button>
             <Button onClick={() => onAddNode('economic')} variant="outline" size="sm">
-              اقتصادي 💰
+              Economic 💰
             </Button>
             <Button onClick={() => onAddNode('social')} variant="outline" size="sm">
-              اجتماعي 👥
+              Social 👥
             </Button>
             <Button onClick={() => onAddNode('cultural')} variant="outline" size="sm">
-              ثقافي 🎭
+              Cultural 🎭
             </Button>
             <Button onClick={() => onAddNode('term')} variant="outline" size="sm">
-              مصطلح 📖
+              Term 📖
             </Button>
             <Button onClick={() => onAddNode('date')} variant="outline" size="sm">
-              تاريخ ⏰
+              Date ⏰
             </Button>
             <Button onClick={() => onAddNode('goal')} variant="outline" size="sm">
-              هدف 🎯
+              Goal 🎯
             </Button>
             <Button onClick={() => onAddNode('indicator')} variant="outline" size="sm">
-              مؤشر 📊
+              Indicator 📊
             </Button>
             <Button onClick={() => onAddNode('country')} variant="outline" size="sm">
-              دولة 🌍
+              Country 🌍
             </Button>
             <Button onClick={() => onAddNode('other')} variant="outline" size="sm">
-              آخر ❔
+              Other ❔
             </Button>
           </div>
         </div>
       </div>
       <div className="rounded-lg bg-white p-4 shadow-lg">
-        <h3 className="mb-2 font-medium">تحليل النص</h3>
+        <h3 className="mb-2 font-medium">Analyze Text</h3>
         <Textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="أدخل النص هنا للتحليل..."
-          className="mb-2 overflow-y-auto" //Added
+          placeholder="Enter text here for analysis..."
+          className="mb-2"
           dir="rtl"
         />
         <Button onClick={handleAnalyze} className="w-full" disabled={!text.trim()}>
-          تحليل
+          Analyze
         </Button>
       </div>
     </div>

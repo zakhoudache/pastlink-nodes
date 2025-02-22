@@ -1,5 +1,4 @@
-'use client';
-
+// src/components/RelationshipsTable.tsx
 import React, { useState } from 'react';
 import {
   Table,
@@ -8,15 +7,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { 
+} from "@/components/ui/table"; // Correct UI library path
+import { Button } from "@/components/ui/button"; // Correct UI library path
+import { Input } from "@/components/ui/input"; // Correct UI library path
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu"; // Correct UI library path
 import { ChevronDown, Edit, Trash, Search, Filter } from 'lucide-react';
 
 interface Relationship {
@@ -31,7 +30,7 @@ interface RelationshipsTableProps {
   onDelete?: (index: number) => void;
 }
 
-export default function RelationshipsTable({ 
+export default function RelationshipsTable({
   relationships,
   onEdit,
   onDelete
@@ -57,8 +56,8 @@ export default function RelationshipsTable({
   // Filter and sort relationships
   const filteredAndSortedRelationships = relationships
     .filter(relationship => {
-      const matchesSearch = searchTerm === '' || 
-        Object.values(relationship).some(value => 
+      const matchesSearch = searchTerm === '' ||
+        Object.values(relationship).some(value =>
           value.toLowerCase().includes(searchTerm.toLowerCase())
         );
       const matchesFilter = !filterType || relationship.type === filterType;
@@ -68,7 +67,7 @@ export default function RelationshipsTable({
       if (!sortField) return 0;
       const aValue = a[sortField].toLowerCase();
       const bValue = b[sortField].toLowerCase();
-      return sortDirection === 'asc' 
+      return sortDirection === 'asc'
         ? aValue.localeCompare(bValue)
         : bValue.localeCompare(aValue);
     });
@@ -90,7 +89,7 @@ export default function RelationshipsTable({
             className="pl-8"
           />
         </div>
-        
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="w-full sm:w-auto">
@@ -104,7 +103,7 @@ export default function RelationshipsTable({
               All Types
             </DropdownMenuItem>
             {relationshipTypes.map((type) => (
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 key={type}
                 onClick={() => setFilterType(type)}
               >
@@ -119,19 +118,19 @@ export default function RelationshipsTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead 
+              <TableHead
                 className="cursor-pointer"
                 onClick={() => handleSort('source')}
               >
                 Source {getSortIcon('source')}
               </TableHead>
-              <TableHead 
+              <TableHead
                 className="cursor-pointer"
                 onClick={() => handleSort('type')}
               >
                 Relationship Type {getSortIcon('type')}
               </TableHead>
-              <TableHead 
+              <TableHead
                 className="cursor-pointer"
                 onClick={() => handleSort('target')}
               >
@@ -145,8 +144,8 @@ export default function RelationshipsTable({
           <TableBody>
             {filteredAndSortedRelationships.length === 0 ? (
               <TableRow>
-                <TableCell 
-                  colSpan={onEdit || onDelete ? 4 : 3} 
+                <TableCell
+                  colSpan={onEdit || onDelete ? 4 : 3}
                   className="text-center text-muted-foreground"
                 >
                   No relationships found
@@ -190,7 +189,7 @@ export default function RelationshipsTable({
           </TableBody>
         </Table>
       </div>
-      
+
       <div className="text-sm text-muted-foreground text-right">
         Total relationships: {filteredAndSortedRelationships.length}
       </div>

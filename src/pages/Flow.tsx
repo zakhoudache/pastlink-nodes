@@ -1,6 +1,7 @@
+// src/components/Flow.tsx
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import '@xyflow/react/dist/style.css';
 import {
   ReactFlow,
@@ -22,13 +23,13 @@ import {
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
-import HistoricalNode, { NodeType, HistoricalNodeData } from '../components/HistoricalNode';
-import { HistoricalEdge, HistoricalEdgeData } from '../components/HistoricalEdge';
-import { EdgeDialog } from '../components/EdgeDialog';
-import { getNodePosition, getNodesBounds } from '../utils/flowUtils';
-import { useHighlightStore } from '../utils/highlightStore';
-import { LeftPanel } from '../components/flow/LeftPanel';
-import { RightPanel } from '../components/flow/RightPanel';
+import HistoricalNode, { NodeType, HistoricalNodeData } from './HistoricalNode'; // Correct paths
+import { HistoricalEdge, HistoricalEdgeData } from './HistoricalEdge';   // Correct paths
+import { EdgeDialog } from './EdgeDialog';              // Correct paths
+import { getNodePosition, getNodesBounds } from '../utils/flowUtils';    // Correct paths
+import { useHighlightStore } from '../utils/highlightStore';          // Correct paths
+import { LeftPanel } from './flow/LeftPanel';            // Correct paths
+import { RightPanel } from './flow/RightPanel';          // Correct paths
 
 const edgeTypes: EdgeTypes = {
   historical: HistoricalEdge,
@@ -47,10 +48,14 @@ const nodeTypes = {
   historical: HistoricalNode,
 };
 
-const initialNodes: Node<HistoricalNodeData>[] = [];
-const initialEdges: Edge<HistoricalEdgeData>[] = [];
 
-const FlowContent = () => {
+interface FlowProps {
+  initialNodes: Node<HistoricalNodeData>[];
+  initialEdges: Edge<HistoricalEdgeData>[];
+}
+
+
+const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
   const [isMounted, setIsMounted] = useState(false);
   const [nodes, setNodes] = useState<Node<HistoricalNodeData>[]>(initialNodes);
   const [edges, setEdges] = useState<Edge<HistoricalEdgeData>[]>(initialEdges);
@@ -58,8 +63,15 @@ const FlowContent = () => {
   const [edgeSourceNode, setEdgeSourceNode] = useState<string | null>(null);
   const [edgeTargetNode, setEdgeTargetNode] = useState<string | null>(null);
 
-  const { highlights, removeHighlight, setHighlights } = useHighlightStore();
+  const { highlights, removeHighlight } = useHighlightStore();
   const { setViewport } = useReactFlow();
+
+  // useEffect to update local state when initialNodes or initialEdges change
+  useEffect(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges]);
+
 
   useEffect(() => {
     setIsMounted(true);
@@ -70,6 +82,8 @@ const FlowContent = () => {
       const customEvent = event as CustomEvent<{ id: string; data: HistoricalNodeData }>;
       const { id, data } = customEvent.detail;
       setNodes((nds) => nds.map((node) => (node.id === id ? { ...node, data } : node)));
+      // Dispatch a custom event to update the parent component's state
+      window.dispatchEvent(new CustomEvent('nodesChange', { detail: nds.map((node) => (node.id === id ? { ...node, data } : node)) }));
     };
 
     window.addEventListener('updateNodeData', handleNodeUpdate);
@@ -99,11 +113,11 @@ const FlowContent = () => {
   const downloadAsPDF = useCallback(() => {
     if (nodes.length === 0) return;
 
-    // الحصول على العنصر الرئيسي للرسم
+    // get the main element
     const flowElement = document.querySelector('.react-flow') as HTMLElement | null;
     if (!flowElement) return;
 
-    // الحصول على العنصر الذي يحتوي على العرض الفعلي (قد يكون .react-flow__viewport أو العنصر الرئيسي نفسه)
+    // get the containing the real view
     const flowWrapper =
       flowElement.querySelector('.react-flow__viewport') as HTMLElement | null || flowElement;
 
@@ -112,19 +126,19 @@ const FlowContent = () => {
     const width = nodesBounds.width + padding * 2;
     const height = nodesBounds.height + padding * 2;
 
-    // حفظ الإعدادات الحالية
+    // current settings
     const originalStyle = {
       width: flowWrapper.style.width,
       height: flowWrapper.style.height,
       transform: flowWrapper.style.transform,
     };
 
-    // تعديل الأنماط مؤقتًا لضمان التقاط المحتوى بالكامل
+    // edit styles
     flowWrapper.style.width = `${width}px`;
     flowWrapper.style.height = `${height}px`;
     flowWrapper.style.transform = 'translate(0, 0) scale(1)';
 
-    // الانتظار حتى يتم تحديث التخطيط
+    // wait to update the styles
     requestAnimationFrame(() => {
       toPng(flowWrapper, {
         backgroundColor: '#ffffff',
@@ -134,7 +148,7 @@ const FlowContent = () => {
           width: `${width}px`,
           height: `${height}px`,
         },
-        // يمكن تجربة إزالة الفلتر أو تعديله إذا كان يمنع التقاط بعض العناصر
+        // remove or change the filter if you need
         // filter: (node) => true,
       })
         .then((dataUrl) => {
@@ -145,208 +159,220 @@ const FlowContent = () => {
           });
           pdf.addImage(dataUrl, 'PNG', padding, padding, width - padding * 2, height - padding * 2);
           pdf.save('historical-flow.pdf');
-            })
-            .catch((err) => {
-              console.error('Failed to generate PDF:', err);
-              toast.error('Failed to generate PDF');
-            })
-            .finally(() => {
-              // إعادة الإعدادات الأصلية بعد الانتهاء
-              flowWrapper.style.width = originalStyle.width;
-              flowWrapper.style.height = originalStyle.height;
-              flowWrapper.style.transform = originalStyle.transform;
-            });
+        })
+        .catch((err) => {
+          console.error('Failed to generate PDF:', err);
+          toast.error('Failed to generate PDF');
+        })
+        .finally(() => {
+          // set original settings
+          flowWrapper.style.width = originalStyle.width;
+          flowWrapper.style.height = originalStyle.height;
+          flowWrapper.style.transform = originalStyle.transform;
         });
-      }, [nodes]);
+    });
+  }, [nodes]);
 
-      const onNodesChange = useCallback(
-        (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds) as Node<HistoricalNodeData>[]),
-        []
-      );
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      const updatedNodes = applyNodeChanges(changes, nodes) as Node<HistoricalNodeData>[];
+      setNodes(updatedNodes);
+      window.dispatchEvent(new CustomEvent('nodesChange', { detail: updatedNodes }));  // Notify parent
+    },
+    [nodes]
+  );
 
-      const onEdgesChange = useCallback(
-        (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds) as Edge<HistoricalEdgeData>[]),
-        []
-      );
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      const updatedEdges = applyEdgeChanges(changes, edges) as Edge<HistoricalEdgeData>[];
+      setEdges(updatedEdges);
+      window.dispatchEvent(new CustomEvent('edgesChange', { detail: updatedEdges }));  // Notify parent
+    },
+    [edges]
+  );
 
-      const onConnect = useCallback((params: Connection) => {
-        if (params.source && params.target) {
-          setEdgeSourceNode(params.source);
-          setEdgeTargetNode(params.target);
-          setIsEdgeDialogOpen(true);
-        }
-      }, []);
-
-      const handleEdgeComplete = useCallback(
-        (type: string, customLabel?: string) => {
-          if (!edgeSourceNode || !edgeTargetNode) return;
-          const edgeId = `e${edgeSourceNode}-${edgeTargetNode}`;
-          const newEdge: Edge<HistoricalEdgeData> = {
-            id: edgeId,
-            source: edgeSourceNode,
-            target: edgeTargetNode,
-            type: 'historical',
-            data: { type, customLabel },
-            animated: true,
-          };
-          setEdges((eds) => [...eds, newEdge]);
-          setEdgeSourceNode(null);
-          setEdgeTargetNode(null);
-          setIsEdgeDialogOpen(false);
-        },
-        [edgeSourceNode, edgeTargetNode]
-      );
-
-      const createNodeFromHighlight = useCallback(
-        (highlight: { id: string; text: string }, type: NodeType) => {
-          const position = getNodePosition(nodes);
-          const newNode: Node<HistoricalNodeData> = {
-            id: highlight.id,
-            type: 'historical',
-            position,
-            data: { type, label: highlight.text, description: '' },
-          };
-          setNodes((nds) => [...nds, newNode]);
-          removeHighlight(highlight.id);
-        },
-        [nodes, removeHighlight]
-      );
-
-      const addNode = useCallback(
-        (type: NodeType) => {
-          const newNode: Node<HistoricalNodeData> = {
-            id: `${Date.now()}`,
-            type: 'historical',
-            position: getNodePosition(nodes),
-            data: { type, label: `New ${type}`, description: `Description for new ${type}` },
-          };
-          setNodes((nds) => [...nds, newNode]);
-        },
-        [nodes]
-      );
-
-      // الدالة المحدثة لتحليل النص وإنشاء العقد والحواف تلقائيًا بناءً على استجابة التحليل
-      const analyzeTextFromResponse = useCallback(
-        async (text: string) => {
-          try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/analyze-text`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ text }),
-            });
-
-            if (!response.ok) {
-              throw new Error(`Analysis failed: ${response.status}`);
-            }
-
-            const data = await response.json();
-            if (data.relationships && Array.isArray(data.relationships)) {
-              // استنساخ العقد والحواف الحالية
-              let updatedNodes = [...nodes];
-              let updatedEdges = [...edges];
-
-              data.relationships.forEach((rel: any) => {
-                const { source, target, type } = rel;
-
-                // إنشاء عقدة للمصدر إذا لم تكن موجودة
-                let sourceNode = updatedNodes.find((node) => node.data.label === source);
-                if (!sourceNode) {
-                  sourceNode = {
-                    id: `node-${source}-${Date.now()}`,
-                    type: 'historical',
-                    position: getNodePosition(updatedNodes),
-                    data: { type: 'historical', label: source, description: '' },
-                  };
-                  updatedNodes.push(sourceNode);
-                }
-
-                // إنشاء عقدة للهدف إذا لم تكن موجودة
-                let targetNode = updatedNodes.find((node) => node.data.label === target);
-                if (!targetNode) {
-                  targetNode = {
-                    id: `node-${target}-${Date.now()}`,
-                    type: 'historical',
-                    position: getNodePosition(updatedNodes),
-                    data: { type: 'historical', label: target, description: '' },
-                  };
-                  updatedNodes.push(targetNode);
-                }
-
-                // إنشاء حافة تربط بين العقدتين
-                const edgeId = `edge-${sourceNode.id}-${targetNode.id}`;
-                if (!updatedEdges.some((edge) => edge.id === edgeId)) {
-                  updatedEdges.push({
-                    id: edgeId,
-                    source: sourceNode.id,
-                    target: targetNode.id,
-                    type: 'historical',
-                    data: { type, customLabel: '' },
-                    animated: true,
-                  });
-                }
-              });
-
-              setNodes(updatedNodes);
-              setEdges(updatedEdges);
-              fitView();
-              toast.success("Analysis complete and nodes created!");
-            }
-          } catch (error: any) {
-            console.error("Analysis error:", error);
-            alert("An error occurred during analysis");
-          }
-        },
-        [nodes, edges, fitView]
-      );
-
-      if (!isMounted) return null;
-
-      return (
-        <div className="h-screen w-full flex"> {/* flex layout */}
-          <LeftPanel
-            onFitView={fitView}
-            onDownloadPDF={downloadAsPDF}
-            onAddNode={addNode}
-            onAnalyzeText={analyzeTextFromResponse}
-            className="w-64 p-4 bg-gray-100 border-r border-gray-300"
-          />
-          <div className="flex-1">
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
-              defaultEdgeOptions={defaultEdgeOptions}
-              fitView
-            >
-              <Background />
-              <Controls />
-            </ReactFlow>
-          </div>
-          <RightPanel
-            highlights={highlights}
-            onCreateNodeFromHighlight={createNodeFromHighlight}
-            className="w-64 p-4 bg-gray-100 border-l border-gray-300"
-          />
-          <EdgeDialog
-            isOpen={isEdgeDialogOpen}
-            onClose={() => setIsEdgeDialogOpen(false)}
-            onConfirm={handleEdgeComplete}
-            defaultType="related-to"
-          />
-        </div>
-      );
-    };
-
-    export default function Flow() {
-      return (
-        <ReactFlowProvider>
-          <FlowContent />
-        </ReactFlowProvider>
-      );
+  const onConnect = useCallback((params: Connection) => {
+    if (params.source && params.target) {
+      setEdgeSourceNode(params.source);
+      setEdgeTargetNode(params.target);
+      setIsEdgeDialogOpen(true);
     }
+  }, []);
+
+  const handleEdgeComplete = useCallback(
+    (type: string, customLabel?: string) => {
+      if (!edgeSourceNode || !edgeTargetNode) return;
+      const edgeId = `e${edgeSourceNode}-${edgeTargetNode}`;
+      const newEdge: Edge<HistoricalEdgeData> = {
+        id: edgeId,
+        source: edgeSourceNode,
+        target: edgeTargetNode,
+        type: 'historical',
+        data: { type, customLabel },
+        animated: true,
+      };
+      setEdges((eds) => [...eds, newEdge]);
+      // Dispatch custom event for edges
+      window.dispatchEvent(new CustomEvent('edgesChange', { detail: [...edges, newEdge] }));
+      setEdgeSourceNode(null);
+      setEdgeTargetNode(null);
+      setIsEdgeDialogOpen(false);
+    },
+    [edgeSourceNode, edgeTargetNode, edges]
+  );
+
+  const createNodeFromHighlight = useCallback(
+    (highlight: { id: string; text: string }, type: NodeType) => {
+      const position = getNodePosition(nodes);
+      const newNode: Node<HistoricalNodeData> = {
+        id: highlight.id,
+        type: 'historical',
+        position,
+        data: { type, label: highlight.text, description: '' },
+      };
+      setNodes((nds) => [...nds, newNode]);
+      // Dispatch custom event for nodes
+      window.dispatchEvent(new CustomEvent('nodesChange', { detail: [...nodes, newNode] }));
+      removeHighlight(highlight.id);
+    },
+    [nodes, removeHighlight]
+  );
+
+  const addNode = useCallback(
+    (type: NodeType) => {
+      const newNode: Node<HistoricalNodeData> = {
+        id: `${Date.now()}`,
+        type: 'historical',
+        position: getNodePosition(nodes),
+        data: { type, label: `New ${type}`, description: `Description for new ${type}` },
+      };
+      setNodes((nds) => [...nds, newNode]);
+      // Dispatch custom event for nodes
+      window.dispatchEvent(new CustomEvent('nodesChange', { detail: [...nodes, newNode] }));
+    },
+    [nodes]
+  );
+
+  // analysis from response
+  const analyzeTextFromResponse = useCallback(
+    async (text: string) => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/analyze-text`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Analysis failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.relationships && Array.isArray(data.relationships)) {
+          // clone the nodes
+          let updatedNodes = [...nodes];
+          let updatedEdges = [...edges];
+
+          data.relationships.forEach((rel: any) => {
+            const { source, target, type } = rel;
+
+            // Create a node for the source if it doesn't exist
+            let sourceNode = updatedNodes.find((node) => node.data.label === source);
+            if (!sourceNode) {
+              sourceNode = {
+                id: `node-${source}-${Date.now()}`,
+                type: 'historical',
+                position: getNodePosition(updatedNodes),
+                data: { type: 'historical', label: source, description: '' },
+              };
+              updatedNodes.push(sourceNode);
+            }
+
+            // Create a node for the target if it doesn't exist
+            let targetNode = updatedNodes.find((node) => node.data.label === target);
+            if (!targetNode) {
+              targetNode = {
+                id: `node-${target}-${Date.now()}`,
+                type: 'historical',
+                position: getNodePosition(updatedNodes),
+                data: { type: 'historical', label: target, description: '' },
+              };
+              updatedNodes.push(targetNode);
+            }
+
+            // Create an edge to link the two nodes
+            const edgeId = `edge-${sourceNode.id}-${targetNode.id}`;
+            if (!updatedEdges.some((edge) => edge.id === edgeId)) {
+              updatedEdges.push({
+                id: edgeId,
+                source: sourceNode.id,
+                target: targetNode.id,
+                type: 'historical',
+                data: { type, customLabel: '' },
+                animated: true,
+              });
+            }
+          });
+          setNodes(updatedNodes);
+          setEdges(updatedEdges);
+          // Dispatch events
+          window.dispatchEvent(new CustomEvent('nodesChange', { detail: updatedNodes }));
+          window.dispatchEvent(new CustomEvent('edgesChange', { detail: updatedEdges }));
+          fitView();
+          toast.success("Analysis complete and nodes created!");
+        }
+      } catch (error: any) {
+        console.error("Analysis error:", error);
+        alert("An error occurred during analysis");
+      }
+    },
+    [nodes, edges, fitView]
+  );
+
+  if (!isMounted) return null;
+
+  return (
+    <div className="h-full w-full">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
+        fitView
+      >
+        <Background />
+        <Controls />
+        <LeftPanel
+          onFitView={fitView}
+          onDownloadPDF={downloadAsPDF}
+          onAddNode={addNode}
+          onAnalyzeText={analyzeTextFromResponse}
+        />
+        <RightPanel
+          highlights={highlights}
+          onCreateNodeFromHighlight={createNodeFromHighlight}
+        />
+      </ReactFlow>
+      <EdgeDialog
+        isOpen={isEdgeDialogOpen}
+        onClose={() => setIsEdgeDialogOpen(false)}
+        onConfirm={handleEdgeComplete}
+        defaultType="related-to"
+      />
+    </div>
+  );
+};
+
+export default function Flow({ initialEdges, initialNodes }: FlowProps) {
+  return (
+    <ReactFlowProvider>
+      <FlowContent initialEdges={initialEdges} initialNodes={initialNodes} />
+    </ReactFlowProvider>
+  );
+}

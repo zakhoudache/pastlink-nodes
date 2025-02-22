@@ -1,3 +1,4 @@
+// src/components/HistoricalEdge.tsx
 import { BaseEdge, EdgeLabelRenderer, EdgeProps, getBezierPath } from '@xyflow/react';
 
 export interface HistoricalEdgeData {
@@ -12,7 +13,6 @@ export interface HistoricalEdgeData {
   deletable?: boolean;
   data?: Record<string, unknown>;
   style?: React.CSSProperties;
-  labelStyle?: React.CSSProperties; // Add label style
 }
 
 export function HistoricalEdge({
@@ -26,7 +26,7 @@ export function HistoricalEdge({
   style = {},
   markerEnd,
   data,
-}: EdgeProps<HistoricalEdgeData>) {
+}: EdgeProps<Record<string, unknown>>) {
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -36,9 +36,8 @@ export function HistoricalEdge({
     targetPosition,
   });
 
-  const edgeData = data;
+  const edgeData = data as HistoricalEdgeData;
   const edgeLabel = edgeData?.customLabel || edgeData?.type || 'connected';
-  const labelStyle = edgeData?.labelStyle || {}; // Use label style
 
   return (
     <>
@@ -52,9 +51,11 @@ export function HistoricalEdge({
           }}
           className="nodrag nopan"
         >
-          <div className="px-2 py-1 bg-white rounded shadow-sm border text-sm" style={labelStyle}> {/* Apply label style */}
+          <div className="px-2 py-1 bg-white rounded shadow-sm border text-sm">
             {edgeLabel}
           </div>
+
+
         </div>
       </EdgeLabelRenderer>
     </>
