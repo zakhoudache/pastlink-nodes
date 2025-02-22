@@ -55,6 +55,11 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
 
     setIsLoading(true);
     try {
+      console.log('Triggering Supabase analyze-text function with:', {
+        text: text.substring(0, 100) + '...', // Only log first 100 chars for brevity
+        temperature: temperature[0]
+      });
+
       const { data, error } = await supabase.functions.invoke('analyze-text', {
         body: { 
           text,
