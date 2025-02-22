@@ -1,16 +1,18 @@
 // src/components/flow/RightPanel.tsx
 import { useState, useEffect } from 'react';
 import { NodeType } from '../HistoricalNode';
-import { useHighlightStore, Highlight } from '../../utils/highlightStore';
+
+export interface Highlight {
+  id: string;
+  text: string;
+}
 
 export interface RightPanelProps {
+  highlights: Highlight[];
   onCreateNodeFromHighlight: (highlight: { id: string; text: string }, type: NodeType) => void;
 }
 
-export function RightPanel({ onCreateNodeFromHighlight }: RightPanelProps) {
-  // Subscribe directly to the highlight store for dynamic data.
-  const highlights = useHighlightStore((state) => state.highlights);
-
+export function RightPanel({ highlights, onCreateNodeFromHighlight }: RightPanelProps) {
   // State to track the selected node type for each highlight.
   const [selectedTypes, setSelectedTypes] = useState<Record<string, NodeType>>({});
 
