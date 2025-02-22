@@ -1,69 +1,122 @@
-// LeftPanel.tsx
-import React from 'react';
+// src/components/flow/LeftPanel.tsx
+import React, { useState } from 'react';
+import { NodeType } from '../HistoricalNode';
+import { Button } from '@/components/ui/button';  // Adjust path as necessary
+import { Textarea } from '@/components/ui/textarea'; // Adjust path as necessary
 
-interface LeftPanelProps {
-  onFitView: () => void;
-  onDownloadPDF: () => void;
-  onAddNode: (type: string) => void;
-  onAnalyzeText: (text: string) => Promise<void>;
-  onAutoLayout: () => void;
-  distributeNodesEvenly: () => void;  // New prop
-  additionalButtons?: { label: string; onClick: () => void }[]; //New prop
+export interface LeftPanelProps {
+    onFitView: () => void;
+    onDownloadPDF: () => void;
+    onAddNode: (type: NodeType) => void;
+    onAnalyzeText: (text: string) => Promise<void>;
+    onAutoLayout: () => void;
+    distributeNodesEvenly: () => void;
+    additionalButtons?: { label: string; onClick: () => void }[];
 }
 
 export const LeftPanel: React.FC<LeftPanelProps> = ({
-  onFitView,
-  onDownloadPDF,
-  onAddNode,
-  onAnalyzeText,
-  onAutoLayout,
-  distributeNodesEvenly, // Destructure the new prop
-  additionalButtons,
+    onFitView,
+    onDownloadPDF,
+    onAddNode,
+    onAnalyzeText,
+    onAutoLayout,
+    distributeNodesEvenly,
+    additionalButtons,
 }) => {
-  const [textToAnalyze, setTextToAnalyze] = React.useState('');
+    const [text, setText] = useState('');
 
-  return (
-    <aside className="w-64 bg-gray-100 p-4 space-y-4">
-      <h2 className="text-lg font-semibold">Actions</h2>
-      <button onClick={onFitView} className="block w-full p-2 bg-blue-500 text-white rounded">
-        Fit View
-      </button>
-      <button onClick={onDownloadPDF} className="block w-full p-2 bg-blue-500 text-white rounded">
-        Download as PDF
-      </button>
-      <button onClick={() => onAddNode('event')} className="block w-full p-2 bg-green-500 text-white rounded">
-        Add Event
-      </button>
-      <button onClick={onAutoLayout} className="block w-full p-2 bg-purple-500 text-white rounded">
-        Auto Layout (Dagre)
-      </button>
-      <button onClick={distributeNodesEvenly} className="block w-full p-2 bg-orange-500 text-white rounded">
-        Distribute Evenly
-      </button>
-      {additionalButtons && additionalButtons.map((button, index) => (
-          <button key={index} onClick={button.onClick} className="block w-full p-2 bg-gray-700 text-white rounded">
-            {button.label}
-          </button>
-        ))}
+    const handleAnalyze = () => {
+        if (text.trim()) {
+            onAnalyzeText(text);
+            setText('');
+        }
+    };
 
-      <div>
-        <label htmlFor="analyzeText" className="block text-sm font-medium text-gray-700">
-          Analyze Text:
-        </label>
-        <textarea
-          id="analyzeText"
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-          rows={4}
-          value={textToAnalyze}
-          onChange={(e) => setTextToAnalyze(e.target.value)}
-        ></textarea>
-        <button
-          onClick={() => onAnalyzeText(textToAnalyze)}
-          className="mt-2 block w-full p-2 bg-indigo-500 text-white rounded"
-        >
-          Analyze
-        </button>
-      </div>
-    </aside>
-  );
+    return (
+        <div className="absolute left-2 top-2 z-10 flex flex-col gap-2">
+            <div className="rounded-lg bg-white p-4 shadow-lg">
+                <div className="mb-4 space-y-2">
+                    <Button onClick={onFitView} variant="outline" className="w-full">
+                        Fit View
+                    </Button>
+                    <Button onClick={onDownloadPDF} variant="outline" className="w-full">
+                        Download PDF
+                    </Button>
+                </div>
+
+                <div className="mb-4 space-y-2">
+                    <Button onClick={onAutoLayout} variant="outline" className="w-full">
+                        Auto Layout (Dagre)
+                    </Button>
+                    <Button onClick={distributeNodesEvenly} variant="outline" className="w-full">
+                        Distribute Evenly
+                    </Button>
+                    {additionalButtons && additionalButtons.map((button, index) => (
+                        <Button key={index} onClick={button.onClick} variant="outline" className="w-full">
+                            {button.label}
+                        </Button>
+                    ))}
+                </div>
+
+                <div className="space-y-2">
+                    <h3 className="font-medium">Add New Node</h3>
+                    <div className="grid grid-cols-2 gap-1">
+                        <Button onClick={() => onAddNode('event')} variant="outline" size="sm">
+                            Event 📅
+                        </Button>
+                        <Button onClick={() => onAddNode('person')} variant="outline" size="sm">
+                            Person 👤
+                        </Button>
+                        <Button onClick={() => onAddNode('cause')} variant="outline" size="sm">
+                            Cause ⚡
+                        </Button>
+                        <Button onClick={() => onAddNode('political')} variant="outline" size="sm">
+                            Political 🏛️
+                        </Button>
+                        <Button onClick={() => onAddNode('economic')} variant="outline" size="sm">
+                            Economic 💰
+                        </Button>
+                        <Button onClick={() => onAddNode('social')} variant="outline" size="sm">
+                            Social 👥
+                        </Button>
+                        <Button onClick={() => onAddNode('cultural')} variant="outline" size="sm">
+                            Cultural 🎭
+                        </Button>
+                        <Button onClick={() => onAddNode('term')} variant="outline" size="sm">
+                            Term 📖
+                        </Button>
+                        <Button onClick={() => onAddNode('date')} variant="outline" size="sm">
+                            Date ⏰
+                        </Button>
+                        <Button onClick={() => onAddNode('goal')} variant="outline" size="sm">
+                            Goal 🎯
+                        </Button>
+                        <Button onClick={() => onAddNode('indicator')} variant="outline" size="sm">
+                            Indicator 📊
+                        </Button>
+                        <Button onClick={() => onAddNode('country')} variant="outline" size="sm">
+                            Country 🌍
+                        </Button>
+                        <Button onClick={() => onAddNode('other')} variant="outline" size="sm">
+                            Other ❔
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="rounded-lg bg-white p-4 shadow-lg">
+                <h3 className="mb-2 font-medium">Analyze Text</h3>
+                <Textarea
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    placeholder="Enter text here for analysis..."
+                    className="mb-2"
+                    dir="rtl"
+                />
+                <Button onClick={handleAnalyze} className="w-full" disabled={!text.trim()}>
+                    Analyze
+                </Button>
+            </div>
+        </div>
+    );
 };
