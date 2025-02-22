@@ -1,4 +1,3 @@
-// src/components/Flow.tsx
 'use client';
 
 import { useCallback, useState, useEffect } from 'react';
@@ -23,13 +22,13 @@ import {
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
-import HistoricalNode, { NodeType, HistoricalNodeData } from './HistoricalNode'; // Correct paths
-import { HistoricalEdge, HistoricalEdgeData } from './HistoricalEdge';   // Correct paths
-import { EdgeDialog } from './EdgeDialog';              // Correct paths
-import { getNodePosition, getNodesBounds } from '../utils/flowUtils';    // Correct paths
-import { useHighlightStore } from '../utils/highlightStore';          // Correct paths
-import { LeftPanel } from './flow/LeftPanel';            // Correct paths
-import { RightPanel } from './flow/RightPanel';          // Correct paths
+import HistoricalNode, { NodeType, HistoricalNodeData } from './HistoricalNode';
+import { HistoricalEdge, HistoricalEdgeData } from './HistoricalEdge';
+import { EdgeDialog } from './EdgeDialog';
+import { getNodePosition, getNodesBounds } from '../utils/flowUtils';
+import { useHighlightStore } from '../utils/highlightStore';
+import { LeftPanel } from './flow/LeftPanel';
+import { RightPanel } from './flow/RightPanel';
 import dagre from 'dagre';
 
 const edgeTypes: EdgeTypes = {
@@ -65,7 +64,6 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
   const { highlights, removeHighlight } = useHighlightStore();
   const { setViewport } = useReactFlow();
 
-  // Update local state when initialNodes or initialEdges change
   useEffect(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
@@ -82,7 +80,6 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
       setNodes((nds) =>
         nds.map((node) => (node.id === id ? { ...node, data } : node))
       );
-      // Dispatch a custom event to update the parent component's state
       window.dispatchEvent(
         new CustomEvent('nodesChange', {
           detail: nodes.map((node) => (node.id === id ? { ...node, data } : node)),
@@ -116,28 +113,23 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
 
   const downloadAsPDF = useCallback(() => {
     if (nodes.length === 0) return;
-
     const flowElement = document.querySelector('.react-flow') as HTMLElement | null;
     if (!flowElement) return;
-
     const flowWrapper =
-      flowElement.querySelector('.react-flow__viewport') as HTMLElement | null || flowElement;
-
+      (flowElement.querySelector('.react-flow__viewport') as HTMLElement | null) ||
+      flowElement;
     const nodesBounds = getNodesBounds(nodes);
     const padding = 50;
     const width = nodesBounds.width + padding * 2;
     const height = nodesBounds.height + padding * 2;
-
     const originalStyle = {
       width: flowWrapper.style.width,
       height: flowWrapper.style.height,
       transform: flowWrapper.style.transform,
     };
-
     flowWrapper.style.width = `${width}px`;
     flowWrapper.style.height = `${height}px`;
     flowWrapper.style.transform = 'translate(0, 0) scale(1)';
-
     requestAnimationFrame(() => {
       toPng(flowWrapper, {
         backgroundColor: '#ffffff',
@@ -173,7 +165,7 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
     (changes: NodeChange[]) => {
       const updatedNodes = applyNodeChanges(changes, nodes) as Node<HistoricalNodeData>[];
       setNodes(updatedNodes);
-      window.dispatchEvent(new CustomEvent('nodesChange', { detail: updatedNodes })); // Notify parent
+      window.dispatchEvent(new CustomEvent('nodesChange', { detail: updatedNodes }));
     },
     [nodes]
   );
@@ -182,7 +174,7 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
     (changes: EdgeChange[]) => {
       const updatedEdges = applyEdgeChanges(changes, edges) as Edge<HistoricalEdgeData>[];
       setEdges(updatedEdges);
-      window.dispatchEvent(new CustomEvent('edgesChange', { detail: updatedEdges })); // Notify parent
+      window.dispatchEvent(new CustomEvent('edgesChange', { detail: updatedEdges }));
     },
     [edges]
   );
@@ -248,28 +240,20 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
     [nodes]
   );
 
-  // Auto layout using Dagre to distribute nodes logically and avoid overlaps.
+  // Auto layout function using Dagre to position nodes logically without overlapping
   const autoLayoutNodes = useCallback(() => {
     const dagreGraph = new dagre.graphlib.Graph();
     dagreGraph.setDefaultEdgeLabel(() => ({}));
-    // Change rankdir to 'TB' (top-to-bottom) or 'LR' (left-to-right) as needed.
     dagreGraph.setGraph({ rankdir: 'TB', marginx: 50, marginy: 50 });
-
-    // Set each node with a default dimension if not provided.
     nodes.forEach((node) => {
-      // You can adjust width/height as necessary. Here we use defaults.
       const nodeWidth = 160;
       const nodeHeight = 200;
       dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
     });
-
-    // Set edges for the layout
     edges.forEach((edge) => {
       dagreGraph.setEdge(edge.source, edge.target);
     });
-
     dagre.layout(dagreGraph);
-
     const updatedNodes = nodes.map((node) => {
       const nodeWithPos = dagreGraph.node(node.id);
       return {
@@ -283,7 +267,6 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
     setNodes(updatedNodes);
   }, [nodes, edges]);
 
-  // Analysis from response...
   const analyzeTextFromResponse = useCallback(
     async (text: string) => {
       try {
@@ -297,19 +280,15 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
             body: JSON.stringify({ text }),
           }
         );
-
         if (!response.ok) {
           throw new Error(`Analysis failed: ${response.status}`);
         }
-
         const data = await response.json();
         if (data.relationships && Array.isArray(data.relationships)) {
           let updatedNodes = [...nodes];
           let updatedEdges = [...edges];
-
           data.relationships.forEach((rel: any) => {
             const { source, target, type } = rel;
-
             let sourceNode = updatedNodes.find((node) => node.data.label === source);
             if (!sourceNode) {
               sourceNode = {
@@ -320,7 +299,6 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
               };
               updatedNodes.push(sourceNode);
             }
-
             let targetNode = updatedNodes.find((node) => node.data.label === target);
             if (!targetNode) {
               targetNode = {
@@ -331,7 +309,6 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
               };
               updatedNodes.push(targetNode);
             }
-
             const edgeId = `edge-${sourceNode.id}-${targetNode.id}`;
             if (!updatedEdges.some((edge) => edge.id === edgeId)) {
               updatedEdges.push({
@@ -381,7 +358,7 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
           onDownloadPDF={downloadAsPDF}
           onAddNode={addNode}
           onAnalyzeText={analyzeTextFromResponse}
-          onAutoLayout={autoLayoutNodes}  {/* New auto layout prop */}
+          onAutoLayout={autoLayoutNodes}
         />
         <RightPanel
           highlights={highlights}
