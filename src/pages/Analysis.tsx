@@ -26,27 +26,32 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [temperature, setTemperature] = useState([0.7]);
   const [autoHighlight, setAutoHighlight] = useState(true);
-  const { highlights, addHighlight } = useHighlightStore();
+  const { addHighlight } = useHighlightStore();
   const [relationships, setRelationships] = useState<Relationship[]>([]);
   const [isEdgeDialogOpen, setIsEdgeDialogOpen] = useState(false);
-  const [currentRelationship, setCurrentRelationship] = useState<{source: string, target: string} | null>(null);
+  const [currentRelationship, setCurrentRelationship] = useState<{ source: string; target: string } | null>(null);
 
-  const handleEdgeComplete = useCallback((type: string, customLabel?: string) => {
-    if (!currentRelationship) return;
-    
-    const newRelationship: Relationship = {
-      source: currentRelationship.source,
-      target: currentRelationship.target,
-      type
-    };
+  // عند إتمام تعديل العلاقة من خلال الحوار، يتم تحديث الحالة وإعادة عرض الجدول
+  const handleEdgeComplete = useCallback(
+    (type: string, customLabel?: string) => {
+      if (!currentRelationship) return;
+      
+      const newRelationship: Relationship = {
+        source: currentRelationship.source,
+        target: currentRelationship.target,
+        type,
+      };
 
-    const updatedRelationships = [...relationships, newRelationship];
-    setRelationships(updatedRelationships);
-    onAnalysisComplete?.(updatedRelationships);
-    setIsEdgeDialogOpen(false);
-    setCurrentRelationship(null);
-  }, [currentRelationship, relationships, onAnalysisComplete]);
+      const updatedRelationships = [...relationships, newRelationship];
+      setRelationships(updatedRelationships);
+      onAnalysisComplete?.(updatedRelationships);
+      setIsEdgeDialogOpen(false);
+      setCurrentRelationship(null);
+    },
+    [currentRelationship, relationships, onAnalysisComplete]
+  );
 
+  // الدالة المسؤولة عن تحليل النص واستلام الاستجابة من API
   const analyzeText = useCallback(async () => {
     if (!text.trim()) {
       toast.error("Please enter some text to analyze");
@@ -55,12 +60,12 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
 
     setIsLoading(true);
     try {
-      console.log('Triggering Supabase analyze-text function with:', {
-        text: text.substring(0, 100) + '...', // Only log first 100 chars for brevity
-        temperature: temperature[0]
+      console.log("Triggering Supabase analyze-text function with:", {
+        text: text.substring(0, 100) + "...", // تسجيل أول 100 حرف فقط للتبسيط
+        temperature: temperature[0],
       });
 
-      const { data, error } = await supabase.functions.invoke('analyze-text', {
+      const { data, error } = await supabase.functions.invoke("analyze-text", {
         body: { 
           text,
           temperature: temperature[0]
@@ -69,27 +74,30 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
 
       if (error) throw error;
 
-      console.log('Received response from analyze-text:', data);
+      console.log("Received response from analyze-text:", data);
 
+      // التحقق من صحة الاستجابة مع التأكد من وجود مصفوفة relationships
       if (!data || !Array.isArray(data.relationships)) {
         throw new Error("Invalid response format from API");
       }
 
-      // Directly set the relationships from the response
-      const formattedRelationships = data.relationships.map((rel: any) => ({
+      // تحويل بيانات العلاقات الواردة إلى التنسيق المطلوب
+      const formattedRelationships: Relationship[] = data.relationships.map((rel: any) => ({
         source: rel.source,
         target: rel.target,
-        type: rel.type || 'related-to' // Default type if none provided
+        type: rel.type || "related-to",
       }));
 
-      console.log('Formatted relationships:', formattedRelationships);
-      
+      console.log("Formatted relationships:", formattedRelationships);
+
+      // تعيين العلاقات إلى الحالة بحيث تُستخدم لاحقًا في جدول العلاقات
       setRelationships(formattedRelationships);
       onAnalysisComplete?.(formattedRelationships);
-        
+
+      // تمييز الكيانات في النص تلقائيًا إذا كان الخيار مفعلاً
       if (autoHighlight) {
-        formattedRelationships.forEach(rel => {
-          [rel.source, rel.target].forEach(entity => {
+        formattedRelationships.forEach((rel) => {
+          [rel.source, rel.target].forEach((entity) => {
             const startIndex = text.indexOf(entity);
             if (startIndex !== -1) {
               addHighlight({
@@ -104,8 +112,7 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
       }
 
       toast.success("Analysis complete!");
-
-    } catch (error) {
+    } catch (error: any) {
       console.error("Analysis error:", error);
       toast.error(error.message || "Failed to analyze text");
     } finally {
