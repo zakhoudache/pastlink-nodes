@@ -1,30 +1,29 @@
-// Flow.tsx (Simplified)
 'use client';
 
 import { useCallback, useState, useEffect } from 'react';
 import '@xyflow/react/dist/style.css';
 import {
-    ReactFlow,
-    ReactFlowProvider,
-    EdgeTypes,
-    MarkerType,
-    Background,
-    Controls,
-    Edge,
-    Node,
-    NodeChange,
-    Connection,
-    EdgeChange,
-    applyNodeChanges,
-    applyEdgeChanges,
-    getViewportForBounds,
-    useReactFlow,
+  ReactFlow,
+  ReactFlowProvider,
+  EdgeTypes,
+  MarkerType,
+  Background,
+  Controls,
+  Edge,
+  Node,
+  NodeChange,
+  Connection,
+  EdgeChange,
+  applyNodeChanges,
+  applyEdgeChanges,
+  getViewportForBounds,
+  useReactFlow,
 } from '@xyflow/react';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import HistoricalNode, { NodeType, HistoricalNodeData } from '../components/HistoricalNode';
 import { HistoricalEdge, HistoricalEdgeData } from '../components/HistoricalEdge';
-import { EdgeDialog } from './EdgeDialog';
+import { EdgeDialog } from '../components/EdgeDialog';
 import { getNodePosition, getNodesBounds } from '../utils/flowUtils';
 import { useHighlightStore } from '../utils/highlightStore';
 import { LeftPanel } from '../components/flow/LeftPanel';
