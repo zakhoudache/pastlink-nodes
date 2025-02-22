@@ -142,45 +142,84 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
 
   return (
     <>
-      <div className="relative inline-block">
-        <Card
-          className={`shadow-sm ${colors.bg} ${colors.border} border-2 ${selected ? 'ring-2 ring-blue-500' : ''} transition-all duration-300`}
-          dir="rtl"
-          onDoubleClick={handleDoubleClick}
-          tabIndex={0}
-          style={{ width: cardWidth }}
-        >
-          <Handle
-            type="target"
-            position={Position.Top}
-            isConnectable={isConnectable}
-            className="!bg-muted-foreground"
-          />
-          <div className="p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xl" role="img" aria-label={typeLabels[type]}>
-                {typeIcons[type]}
-              </span>
-              <div>
-                <div className="text-xs font-medium text-muted-foreground">{typeLabels[type]}</div>
-                <div className="font-medium">{label}</div>
-              </div>
-            </div>
-            {description && <p className="text-sm text-muted-foreground">{description}</p>}
+     <div className="relative inline-block">
+  <Card
+    className={`shadow-md ${colors.bg} ${colors.border} border-2 rounded-lg ${
+      selected ? 'ring-2 ring-blue-500' : ''
+    } transition-all duration-300 hover:shadow-xl focus:outline-none focus:ring-2`}
+    dir="rtl"
+    onDoubleClick={handleDoubleClick}
+    tabIndex={0}
+    style={{ width: cardWidth }}
+  >
+    <Handle
+      type="target"
+      position={Position.Top}
+      isConnectable={isConnectable}
+      className="!bg-muted-foreground"
+    />
+    <div className="p-4 relative">
+      {/* Control button */}
+      <button
+        onClick={() => setShowControls((prev) => !prev)}
+        className="absolute top-1 right-1 p-1 bg-white rounded-full shadow hover:bg-gray-100 z-20"
+        aria-label="More controls"
+      >
+        ⋮
+      </button>
+
+      {/* Dropdown controls */}
+      {showControls && (
+        <div className="absolute top-8 right-1 bg-white border border-gray-200 shadow-lg rounded-md z-30">
+          <button
+            onClick={() => {
+              setIsDialogOpen(true);
+              setShowControls(false);
+            }}
+            className="block w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 text-right"
+          >
+            تحرير
+          </button>
+          <button
+            onClick={() => {
+              // Dispatch or call your delete function/event here
+              console.log('Deleting node', id);
+              setShowControls(false);
+            }}
+            className="block w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 text-right"
+          >
+            حذف
+          </button>
+          {/* Additional control buttons can be added here */}
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xl" role="img" aria-label={typeLabels[type]}>
+          {typeIcons[type]}
+        </span>
+        <div>
+          <div className="text-xs font-medium text-muted-foreground">
+            {typeLabels[type]}
           </div>
-          <Handle
-            type="source"
-            position={Position.Bottom}
-            isConnectable={isConnectable}
-            className="!bg-muted-foreground"
-          />
-        </Card>
-        {/* Resize handle placed at the bottom-right corner */}
-        <div
-          onMouseDown={handleMouseDown}
-          className="absolute bottom-0 right-0 w-4 h-4 cursor-ew-resize bg-gray-300 hover:bg-gray-400"
-        />
+          <div className="font-semibold text-lg">{label}</div>
+        </div>
       </div>
+      {description && <p className="text-sm text-muted-foreground">{description}</p>}
+    </div>
+    <Handle
+      type="source"
+      position={Position.Bottom}
+      isConnectable={isConnectable}
+      className="!bg-muted-foreground"
+    />
+  </Card>
+  {/* Resize handle placed at the bottom-right corner */}
+  <div
+    onMouseDown={handleMouseDown}
+    className="absolute bottom-0 right-0 w-5 h-5 cursor-ew-resize bg-gray-400 hover:bg-gray-500 rounded-full shadow-md transition-colors duration-200"
+  />
+</div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
