@@ -1,5 +1,5 @@
 // src/components/flow/RightPanel.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NodeType } from '../HistoricalNode';
 import { Highlight } from '../../utils/highlightStore';
 
@@ -25,8 +25,21 @@ const nodeTypes: NodeType[] = [
 ];
 
 export function RightPanel({ highlights, onCreateNodeFromHighlight }: RightPanelProps) {
-  // State to track the selected node type for each highlight (defaulting to 'event')
+  // State to track the selected node type for each highlight.
   const [selectedTypes, setSelectedTypes] = useState<Record<string, NodeType>>({});
+
+  // Initialize selectedTypes state based on the incoming highlights.
+  useEffect(() => {
+    setSelectedTypes((prev) => {
+      const newSelectedTypes: Record<string, NodeType> = { ...prev };
+      highlights.forEach((highlight) => {
+        if (!newSelectedTypes[highlight.id]) {
+          newSelectedTypes[highlight.id] = 'event';
+        }
+      });
+      return newSelectedTypes;
+    });
+  }, [highlights]);
 
   const handleTypeChange = (highlightId: string, newType: NodeType) => {
     console.log(`Highlight ${highlightId}: type changed to ${newType}`);
