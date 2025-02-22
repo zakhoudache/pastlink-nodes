@@ -26,9 +26,8 @@ import HistoricalNode, { NodeType, HistoricalNodeData } from './HistoricalNode';
 import { HistoricalEdge, HistoricalEdgeData } from './HistoricalEdge';
 import { EdgeDialog } from './EdgeDialog';
 import { getNodePosition, getNodesBounds } from '../utils/flowUtils';
-import { useHighlightStore } from '../utils/highlightStore';
 import { LeftPanel } from './flow/LeftPanel';
-import { RightPanel } from './flow/RightPanel';
+import { RightPanel, Highlight } from './flow/RightPanel'; //Import the RightPanel highlight interface
 import dagre from 'dagre';
 import NodeCanvas from './NodeCanvas';  // Import the NodeCanvas component
 
@@ -63,9 +62,8 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
   const [edgeSourceNode, setEdgeSourceNode] = useState<string | null>(null);
   const [edgeTargetNode, setEdgeTargetNode] = useState<string | null>(null);
   const [useAutoLayout, setUseAutoLayout] = useState(false);  // State to toggle auto layout
+  const [highlights, setHighlights] = useState<Highlight[]>([]);
 
-
-  const { highlights, removeHighlight } = useHighlightStore();
   const { setViewport } = useReactFlow();
 
   useEffect(() => {
@@ -214,6 +212,13 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
     [edgeSourceNode, edgeTargetNode, edges]
   );
 
+  const removeHighlight = useCallback(
+    (id: string) => {
+      setHighlights((prevHighlights) => prevHighlights.filter((highlight) => highlight.id !== id));
+    },
+    []
+  );
+
   const createNodeFromHighlight = useCallback(
     (highlight: { id: string; text: string }, type: NodeType) => {
       const position = getNodePosition(nodes);
@@ -331,6 +336,10 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
           window.dispatchEvent(new CustomEvent('edgesChange', { detail: updatedEdges }));
           fitView();
           toast.success('Analysis complete and nodes created!');
+        } else if (data.highlights && Array.isArray(data.highlights)) {
+          // Update highlights state with analyzed highlights
+          setHighlights(data.highlights);
+          toast.success('Text analyzed and highlights generated!');
         }
       } catch (error: any) {
         console.error('Analysis error:', error);
