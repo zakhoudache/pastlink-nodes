@@ -40,7 +40,7 @@ function extractJSON(responseText: string): string {
 }
 
 /**
- * Removes trailing commas before closing brackets/braces.
+ * Removes trailing commas before closing brackets or braces.
  */
 function cleanJSON(jsonText: string): string {
   return jsonText.replace(/,\s*([\]}])/g, '$1');
@@ -68,7 +68,7 @@ function sanitizeResponse(json: Partial<GeminiResponse>): GeminiResponse {
     relationships: Array.isArray(json.relationships) ? json.relationships : []
   };
 
-  // Sanitize events: ensure description exists and date is either valid or null.
+  // Validate events: ensure description exists and date is either valid or null.
   sanitized.events = sanitized.events
     .filter(event => event && typeof event.description === 'string')
     .map(event => ({
@@ -76,7 +76,7 @@ function sanitizeResponse(json: Partial<GeminiResponse>): GeminiResponse {
       date: (typeof event.date === 'string' && event.date.trim() !== '') ? event.date : null,
     }));
 
-  // Sanitize relationships: ensure required fields exist and default type if needed.
+  // Validate relationships: ensure required fields exist and use default type if needed.
   sanitized.relationships = sanitized.relationships
     .filter(rel =>
       rel?.source && rel?.target && rel?.type &&
@@ -91,7 +91,7 @@ function sanitizeResponse(json: Partial<GeminiResponse>): GeminiResponse {
         : 'related-to',
     }));
 
-  // Add a default relationship if none are present.
+  // Provide a default relationship if none exist.
   if (sanitized.relationships.length === 0) {
     const defaultSource = sanitized.people[0] || sanitized.locations[0] || "Unknown";
     const defaultTarget = sanitized.terms[0] || "Event";
@@ -141,70 +141,16 @@ async function handleRequest(req: Request): Promise<Response> {
       }
     });
 
-    // Construct the prompt with clear instructions.
+    // Construct the prompt using Arabic instructions without specifying formatting.
     const prompt = `
-You are an expert data extraction specialist. Your ONLY task is to analyze the following historical text and return the key information as a **VALID JSON object**.
-
-**CRITICAL: You MUST respond with valid JSON. NO EXCEPTIONS! Do NOT add ANY text before, after, or outside the JSON object. The JSON MUST be parsable.**
-
-The JSON object MUST have the following EXACT structure. Pay VERY close attention to commas, brackets, and braces.
-
-\`\`\`json
-{
-  "events": [
-    {
-      "date": "Date (YYYY or YYYY-MM)",
-      "description": "Concise description"
-    }
-    // No trailing commas allowed in the list
-  ],
-  "people": ["List of key people"],
-  "locations": ["List of geographical locations"],
-  "terms": ["List of key historical terms"],
-  "relationships": [
-    {
-      "source": "Entity 1",
-      "target": "Entity 2",
-      "type": "Relationship type"
-    }
-    // No trailing commas allowed in the list
-  ]
-}
-\`\`\`
-
-Example of a correct JSON response:
-
-\`\`\`json
-{
-  "events": [
-    {
-      "date": "1914-07",
-      "description": "World War I begins"
-    }
-  ],
-  "people": ["Archduke Franz Ferdinand"],
-  "locations": ["Sarajevo"],
-  "terms": ["Militarism"],
-  "relationships": [
-    {
-      "source": "World War I",
-      "target": "Archduke Franz Ferdinand",
-      "type": "caused-by"
-    }
-  ]
-}
-\`\`\`
-
-Strict rules you MUST follow:
-1. The ENTIRE response MUST be valid JSON.
-2. Dates: YYYY or YYYY-MM. If no date, use NULL.
-3. Each list must contain at least one element (use "" if nothing found).
-4. Extract directly. Do NOT infer.
-5. "related-to" is the default relationship.
-6. No duplicate entities.
-7. Enclose the last element of an array without a trailing comma.
-
-Historical Text: ${text}
+أنت متخصص في استخراج البيانات. مهمتك الوحيدة هي تحليل النص التاريخي التالي وإرجاع المعلومات الرئيسية في شكل كائن JSON صالح. يجب أن تكون الاستجابة عبارة عن كائن JSON فقط دون أية نصوص إضافية.
+الكائن يجب أن يحتوي على الخصائص التالية:
+1. events: قائمة من الكائنات، كل كائن يحتوي على "date" (بتنسيق YYYY أو YYYY-MM، وإذا لم يوجد تاريخ فاستخدم null) و "description" (وصف مختصر).
+2. people: قائمة بأسماء الأشخاص الرئيسيين.
+3. locations: قائمة بالأماكن الجغرافية.
+4. terms: قائمة بالمصطلحات التاريخية.
+5. relationships: قائمة من الكائنات تحتوي على "source" (الكيان المصدر)، "target" (الكيان الهدف)، و "type" (نوع العلاقة، والقيم الممكنة هي caused-by, led-to, influenced, part-of, opposed-to, related-to). إذا لم يكن هناك علاقة محددة، فاستخدم "related-to" كافتراضية.
+النص التاريخي: ${text}
 `;
 
     // Generate content using the Gemini model.
@@ -227,7 +173,7 @@ Historical Text: ${text}
         console.error("Raw response:", responseText);
         return new Response(
           JSON.stringify({
-            error: "Failed to parse API response to JSON. Check logs for details.",
+            error: "Failed to parse API response to JSON. Please check the logs.",
             details: (error as Error).message,
             rawResponse: responseText,
           }),
