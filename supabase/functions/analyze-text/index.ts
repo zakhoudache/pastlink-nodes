@@ -1,12 +1,6 @@
 import { corsHeaders } from "../shared-one/cors.ts";
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@^0.3.0'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@^0.3.0';
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -25,9 +19,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Initialize Gemini
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
+    // Initialize Gemini with your API key
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY environment variable not set");
+    }
+    
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
     // Create a structured prompt for historical analysis
     const prompt = `Analyze this historical text and extract the following information. Return ONLY the JSON object without any markdown formatting or explanation:
@@ -39,9 +38,12 @@ Deno.serve(async (req) => {
       "relationships": [{"from": "entity1", "to": "entity2", "type": "relationship type"}]
     }
     
-    Text to analyze: ${text}`
+    Text to analyze: ${text}`;
 
-    const responseText = data.candidates[0].content.parts[0].text.trim();
+    // Generate content using Gemini
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const responseText = response.text().trim();
 
     let jsonResponse;
     try {
@@ -49,22 +51,41 @@ Deno.serve(async (req) => {
       jsonResponse = JSON.parse(responseText);
     } catch (error: any) {
       console.error("Failed to parse API response as JSON:", error);
-      console.error("Response text:", responseText); // Log the response text
+      console.error("Response text:", responseText);
       throw new Error(`Failed to parse API response as JSON: ${error.message}`);
     }
     
     try {
       // Validate the response structure
+      if (!Array.isArray(jsonResponse.events)) {
+        throw new Error("Invalid response format: events array missing");
+      }
+      if (!Array.isArray(jsonResponse.people)) {
+        throw new Error("Invalid response format: people array missing");
+      }
+      if (!Array.isArray(jsonResponse.locations)) {
+        throw new Error("Invalid response format: locations array missing");
+      }
+      if (!Array.isArray(jsonResponse.terms)) {
+        throw new Error("Invalid response format: terms array missing");
+      }
       if (!Array.isArray(jsonResponse.relationships)) {
         throw new Error("Invalid response format: relationships array missing");
       }
 
       // Validate each relationship object
       jsonResponse.relationships = jsonResponse.relationships.filter((rel: any) => 
-        rel.source && rel.target && rel.type &&
-        typeof rel.source === 'string' &&
-        typeof rel.target === 'string' &&
+        rel.from && rel.to && rel.type &&
+        typeof rel.from === 'string' &&
+        typeof rel.to === 'string' &&
         typeof rel.type === 'string'
+      );
+
+      // Validate each event object
+      jsonResponse.events = jsonResponse.events.filter((event: any) =>
+        event.date && event.description &&
+        typeof event.date === 'string' &&
+        typeof event.description === 'string'
       );
 
       return new Response(JSON.stringify(jsonResponse), {
@@ -76,12 +97,12 @@ Deno.serve(async (req) => {
       throw new Error(`Error validating response: ${error.message}`);
     }
 
-    } catch (error: any) {
-      console.error("Error:", error);
-      return new Response(JSON.stringify({
-        error: "Processing error",
-        details: error.message
-      }), {
+  } catch (error: any) {
+    console.error("Error:", error);
+    return new Response(JSON.stringify({
+      error: "Processing error",
+      details: error.message
+    }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
