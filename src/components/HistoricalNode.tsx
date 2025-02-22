@@ -120,7 +120,7 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
   return (
     <>
       <Card
-        className={`w-60 shadow-sm ${colors.bg} ${colors.border} border-2 ${selected ? 'ring-2 ring-blue-500' : ''}`}
+        className={`w-40 shadow-sm ${colors.bg} ${colors.border} border-2 ${selected ? 'ring-2 ring-blue-500' : ''}`}
         dir="rtl"
         onDoubleClick={handleDoubleClick}
         tabIndex={0} //Make it focusable
