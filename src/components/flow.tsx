@@ -30,6 +30,8 @@ import { useHighlightStore } from '../utils/highlightStore';
 import { LeftPanel } from './flow/LeftPanel';
 import { RightPanel } from './flow/RightPanel';
 import dagre from 'dagre';
+import NodeCanvas from './NodeCanvas';  // Import the NodeCanvas component
+
 
 const edgeTypes: EdgeTypes = {
   historical: HistoricalEdge,
@@ -60,6 +62,8 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
   const [isEdgeDialogOpen, setIsEdgeDialogOpen] = useState(false);
   const [edgeSourceNode, setEdgeSourceNode] = useState<string | null>(null);
   const [edgeTargetNode, setEdgeTargetNode] = useState<string | null>(null);
+  const [useAutoLayout, setUseAutoLayout] = useState(false);  // State to toggle auto layout
+
 
   const { highlights, removeHighlight } = useHighlightStore();
   const { setViewport } = useReactFlow();
@@ -336,35 +340,73 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
     [nodes, edges, fitView]
   );
 
+  // Simple grid distribution layout
+  const distributeNodesEvenly = useCallback(() => {
+    const numNodes = nodes.length;
+    const numColumns = Math.ceil(Math.sqrt(numNodes));
+    const spacingX = 250;
+    const spacingY = 150;
+
+    const updatedNodes = nodes.map((node, index) => {
+      const row = Math.floor(index / numColumns);
+      const col = index % numColumns;
+      return {
+        ...node,
+        position: {
+          x: col * spacingX,
+          y: row * spacingY,
+        },
+      };
+    });
+    setNodes(updatedNodes);
+  }, [nodes]);
+
+
   if (!isMounted) return null;
 
   return (
     <div className="h-full w-full">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        defaultEdgeOptions={defaultEdgeOptions}
-        fitView
-      >
-        <Background />
-        <Controls />
-        <LeftPanel
-          onFitView={fitView}
-          onDownloadPDF={downloadAsPDF}
-          onAddNode={addNode}
-          onAnalyzeText={analyzeTextFromResponse}
-          onAutoLayout={autoLayoutNodes}
-        />
-        <RightPanel
-          highlights={highlights}
-          onCreateNodeFromHighlight={createNodeFromHighlight}
-        />
-      </ReactFlow>
+
+      {/* Conditionally render either ReactFlow or NodeCanvas based on autoLayout state */}
+      {useAutoLayout ? (
+        <NodeCanvas nodes={nodes} />
+      ) : (
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          defaultEdgeOptions={defaultEdgeOptions}
+          fitView
+        >
+          <Background />
+          <Controls />
+        </ReactFlow>
+      )}
+
+      <LeftPanel
+        onFitView={fitView}
+        onDownloadPDF={downloadAsPDF}
+        onAddNode={addNode}
+        onAnalyzeText={analyzeTextFromResponse}
+        onAutoLayout={autoLayoutNodes}
+        distributeNodesEvenly={distributeNodesEvenly}  // Pass the new function
+
+        // Button to toggle between ReactFlow and NodeCanvas layouts
+        additionalButtons={[
+          {
+            label: useAutoLayout ? 'Switch to ReactFlow' : 'Switch to Auto Layout',
+            onClick: () => setUseAutoLayout(!useAutoLayout),
+          },
+        ]}
+      />
+      <RightPanel
+        highlights={highlights}
+        onCreateNodeFromHighlight={createNodeFromHighlight}
+      />
       <EdgeDialog
         isOpen={isEdgeDialogOpen}
         onClose={() => setIsEdgeDialogOpen(false)}
@@ -374,6 +416,7 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
     </div>
   );
 };
+
 
 export default function Flow({ initialEdges, initialNodes }: FlowProps) {
   return (
