@@ -10,6 +10,15 @@ const VALID_RELATIONSHIP_TYPES = [
   'related-to'
 ];
 
+interface GeminiResponse {
+  events: { date: string | null; description: string }[];
+  people: string[];
+  locations: string[];
+  terms: string[];
+  relationships: { source: string; target: string; type: string }[];
+}
+
+
 Deno.serve(async (req) => {
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
@@ -51,38 +60,71 @@ Deno.serve(async (req) => {
     });
 
     // Construct the prompt for the Gemini model
-    const prompt = `Analyze the following historical text and extract entities and relationships in a precise and organized manner.  You must extract key events, people, locations, and terms, as well as the relationships between these entities.  Do not add any additional text or notes outside of the specified JSON structure.
+    const prompt = `You are a highly skilled data extraction expert. Your task is to analyze the following historical text and extract key information, structuring it as a JSON object.
 
-The output should be a JSON object with the following structure:
-{
-  "events": [
+    **Important: You MUST respond ONLY with valid JSON. Do NOT include any introductory text, explanations, or any other text outside of the JSON object.**
+
+    The JSON object should have the following structure:
+
+    \`\`\`json
     {
-      "date": "Date (preferably in YYYY or YYYY-MM-DD format)",
-      "description": "Concise and detailed description of the event"
+      "events": [
+        {
+          "date": "Date (YYYY or YYYY-MM-DD)",
+          "description": "Concise description of the event"
+        },
+        ...
+      ],
+      "people": ["List of key people"],
+      "locations": ["List of geographical locations"],
+      "terms": ["List of key historical concepts and terms"],
+      "relationships": [
+        {
+          "source": "Name of the first entity",
+          "target": "Name of the related entity",
+          "type": "Type of relationship (one of: ${VALID_RELATIONSHIP_TYPES.join(', ')})"
+        },
+        ...
+      ]
     }
-  ],
-  "people": ["List of key people"],
-  "locations": ["List of geographical locations"],
-  "terms": ["List of fundamental historical concepts and terms"],
-  "relationships": [
+    \`\`\`
+
+    Here's an example of a valid JSON response:
+
+    \`\`\`json
     {
-      "source": "Name of the first entity (person, event, location)",
-      "target": "Name of the related entity",
-      "type": "Type of relationship (must be one of: ${VALID_RELATIONSHIP_TYPES.join(', ')})"
+      "events": [
+        {
+          "date": "1914-07-28",
+          "description": "World War I begins"
+        }
+      ],
+      "people": ["Archduke Franz Ferdinand"],
+      "locations": ["Sarajevo"],
+      "terms": ["Militarism"],
+      "relationships": [
+        {
+          "source": "World War I",
+          "target": "Archduke Franz Ferdinand",
+          "type": "caused-by"
+        }
+      ]
     }
-  ]
-}
+    \`\`\`
 
-### Instructions and Conditions:
-1. Do not add any text or explanations outside the specified JSON structure.
-2. Ensure all dates are consistent in format.
-3. Each list must contain at least one element; if information for some categories is not available, leave them empty.
-4. Extract entities and relationships directly from the historical text without inferences or additions.
-5. If the extracted relationship does not match the specified types, use "related-to" as the default.
-6. Descriptions should be accurate, detailed, and concise.
-7. Do not repeat entities; if an entity appears more than once, include it only once in the list.
+    Follow these rules strictly:
 
-**Text to analyze:** ${text}`;
+    1.  **The ENTIRE response MUST be a valid JSON object.**  No exceptions.
+    2.  Dates must be in YYYY or YYYY-MM-DD format. If the date isn't found return NULL for the date
+    3.  Each list should contain at least one element (can be an empty string "" if nothing's found).
+    4.  Extract information directly from the text. Do not make inferences.
+    5.  Use 'related-to' as the default relationship type if none other applies.
+    6.  Do not include duplicate entities.
+        7. If the date isn't found return NULL for the date
+    
+
+    Historical Text: ${text}
+    `;
 
     // Generate content using the Gemini model
     const result = await model.generateContent(prompt);
@@ -97,23 +139,46 @@ The output should be a JSON object with the following structure:
       }
     }
 
-    let jsonResponse;
+    let jsonResponse: GeminiResponse;
     try {
-      jsonResponse = JSON.parse(responseText);
+      jsonResponse = JSON.parse(responseText) as GeminiResponse;
     } catch (error: any) {
       console.error("Failed to parse API response to JSON:", error);
       console.error("Received text:", responseText);
-      throw new Error(`Failed to parse API response to JSON: ${error.message}`);
+      return new Response(
+        JSON.stringify({
+          error: "Failed to parse API response to JSON. Please check the logs.",
+          details: error.message,
+          rawResponse: responseText,  // Include raw response for debugging
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     // Validate and sanitize the JSON response
     try {
-      // Ensure all expected lists exist
-      ['events', 'people', 'locations', 'terms', 'relationships'].forEach(key => {
-        if (!Array.isArray(jsonResponse[key])) {
-          jsonResponse[key] = [];
-        }
-      });
+      // Ensure all expected lists exist and are arrays
+      const defaultResponse: GeminiResponse = {
+        events: [],
+        people: [],
+        locations: [],
+        terms: [],
+        relationships: [],
+      };
+
+      jsonResponse = {
+        ...defaultResponse, // Apply defaults
+        ...jsonResponse,
+        events: Array.isArray(jsonResponse.events) ? jsonResponse.events : [],
+        people: Array.isArray(jsonResponse.people) ? jsonResponse.people : [],
+        locations: Array.isArray(jsonResponse.locations) ? jsonResponse.locations : [],
+        terms: Array.isArray(jsonResponse.terms) ? jsonResponse.terms : [],
+        relationships: Array.isArray(jsonResponse.relationships) ? jsonResponse.relationships : [],
+      };
+
 
       // Sanitize and validate relationships
       jsonResponse.relationships = jsonResponse.relationships
@@ -135,16 +200,17 @@ The output should be a JSON object with the following structure:
       // Sanitize and validate events
       jsonResponse.events = jsonResponse.events
         .filter((event: any) =>
-          event?.date &&
           event?.description &&
-          typeof event.date === 'string' &&
           typeof event.description === 'string'
-        );
+        )
+        .map(event => ({
+          ...event,
+          date: (typeof event.date === 'string' && event.date.trim() !== '') ? event.date : null, // Handle null dates
+        }));
+
 
       // Provide a default relationship if none are found
       if (jsonResponse.relationships.length === 0) {
-        // Provide more robust handling for cases where the required array is empty.
-        // Use a fallback in cases where arrays might be empty
         const source = jsonResponse.people[0] || jsonResponse.locations[0] || "Unknown";
         const target = jsonResponse.terms[0] || "Event";
 
@@ -169,7 +235,16 @@ The output should be a JSON object with the following structure:
       );
     } catch (error: any) {
       console.error("Error during response validation:", error);
-      throw new Error(`Error during response validation: ${error.message}`);
+      return new Response(
+        JSON.stringify({
+          error: "Error during response validation. Please check the logs.",
+          details: error.message,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
   } catch (error: any) {
