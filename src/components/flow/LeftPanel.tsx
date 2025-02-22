@@ -29,6 +29,8 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     const [width, setWidth] = useState(300); // Initial width
     const [height, setHeight] = useState(500); // Initial height
     const [position, setPosition] = useState({ x: 20, y: 20 }); // Initial position
+    const panelRef = useRef<HTMLDivElement>(null);
+
 
     const handleAnalyze = () => {
         if (text.trim()) {
@@ -46,14 +48,22 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
         setPosition({ x: data.x, y: data.y });
     };
 
+    useEffect(() => {
+        if (panelRef.current) {
+            panelRef.current.style.transform = `translate(${position.x}px, ${position.y}px)`;
+        }
+    }, [position]);
+
+
     return (
         <Resizable
             style={{
                 position: 'absolute',
-                top: position.y,
-                left: position.x,
+                top: 0,
+                left: 0,
                 zIndex: 1000, // Ensure it's on top of other elements
             }}
+            ref={panelRef}
             defaultSize={{
                 width: width,
                 height: height,
@@ -64,7 +74,9 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
             maxHeight={800}
             onResize={handleResize}
             onResizeStop={handleResize}
+            onDragStop={handleDrag}
             draggableOpts={{ enableUserSelectHack: false }}
+
             enableResizing={{
                 top: false,
                 right: true,
@@ -127,7 +139,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                         <Button onClick={() => onAddNode('term')} variant="outline" size="sm">
                             Term 📖
                         </Button>
-                        <Button onClick={() => onAddNode('date')} variant="outline" size="sm">
+                        <Button onClick={()={() => onAddNode('date')} variant="outline" size="sm">
                             Date ⏰
                         </Button>
                         <Button onClick={() => onAddNode('goal')} variant="outline" size="sm">
@@ -136,7 +148,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
                         <Button onClick={() => onAddNode('indicator')} variant="outline" size="sm">
                             Indicator 📊
                         </Button>
-                        <Button onClick={() => onAddNode('country')} variant="outline" size="sm">
+                        <Button onClick={()={() => onAddNode('country')} variant="outline" size="sm">
                             Country 🌍
                         </Button>
                         <Button onClick={() => onAddNode('other')} variant="outline" size="sm">
