@@ -1,13 +1,13 @@
-// src/components/HistoricalNode.tsx
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { Card } from '@/components/ui/card';  // Correct UI library path
-import { Input } from '@/components/ui/input';  // Correct UI library path
-import { Textarea } from '@/components/ui/textarea'; // Correct UI library path
-import { Button } from '@/components/ui/button'; // Correct UI library path
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'; // Correct UI library path
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; //Import Select
 
 export type NodeType =
   | 'event'
@@ -123,6 +123,7 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
         className={`w-60 shadow-sm ${colors.bg} ${colors.border} border-2 ${selected ? 'ring-2 ring-blue-500' : ''}`}
         dir="rtl"
         onDoubleClick={handleDoubleClick}
+        tabIndex={0} //Make it focusable
       >
         <Handle
           type="target"
@@ -171,6 +172,21 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
                 onChange={(e) => setEditedData((prev) => ({ ...prev, description: e.target.value }))}
                 className="mt-1"
               />
+            </div>
+            <div> {/* Select for changing node type */}
+              <label className="text-sm font-medium">Type</label>
+              <Select onValueChange={(value) => setEditedData((prev) => ({ ...prev, type: value as NodeType }))} defaultValue={editedData.type}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر النوع" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(typeLabels).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Button onClick={handleSave}>حفظ</Button>
           </div>

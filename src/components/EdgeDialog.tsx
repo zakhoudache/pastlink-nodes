@@ -1,97 +1,65 @@
-// src/components/EdgeDialog.tsx
 import React, { useState } from 'react';
-import { Label } from '@/components/ui/label'; // Correct UI library path
-import { Button } from '@/components/ui/button'; // Correct UI library path
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'; // Correct UI library path
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Correct UI library path
-import { Input } from '@/components/ui/input'; // Correct UI library path
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button'; // Import Button
 
 interface EdgeDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (type: string, customLabel?: string) => void;
+  onConfirm: (type: string) => void;
   defaultType?: string;
-  defaultLabel?: string;
 }
-
-const relationshipTypes = [
-  'Caused by',
-  'Led to',
-  'Influenced',
-  'Part of',
-  'Opposed to',
-  'Related to',
-] as const;
 
 export function EdgeDialog({
   isOpen,
   onClose,
   onConfirm,
   defaultType = 'related-to',
-  defaultLabel
 }: EdgeDialogProps) {
-  const [customLabel, setCustomLabel] = useState<string>(defaultLabel || '');
-  const [selectedType, setSelectedType] = useState<string>(defaultType);
-
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      onClose();
-    }
-  };
+  const [selectedValue, setSelectedValue] = useState(defaultType);
 
   const handleConfirm = () => {
-    onConfirm(selectedType, customLabel || undefined);
+    onConfirm(selectedValue);
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Select Relationship Type</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="relationship-type">Relationship Type</Label>
-            <Select
-              value={selectedType}
-              onValueChange={setSelectedType}
-            >
-              <SelectTrigger id="relationship-type">
-                <SelectValue placeholder="Choose relationship type" />
-              </SelectTrigger>
-              <SelectContent>
-                {relationshipTypes.map((type) => (
-                  <SelectItem
-                    key={type}
-                    value={type.toLowerCase().replace(/ /g, '-')}
-                  >
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="custom-label">Custom Label (Optional)</Label>
-            <Input
-              id="custom-label"
-              type="text"
-              placeholder="Enter custom label"
-              value={customLabel}
-              onChange={(e) => setCustomLabel(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleConfirm();
-                }
-              }}
-            />
-          </div>
+          <Select value={selectedValue} onValueChange={setSelectedValue}>
+            <SelectTrigger>
+              <SelectValue placeholder="اختر نوع العلاقة" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="related-to">مرتبط بـ</SelectItem>
+              <SelectItem value="causes">يسبب</SelectItem>
+              <SelectItem value="influences">يؤثر على</SelectItem>
+              <SelectItem value="part-of">جزء من</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <div className="flex justify-end">
+        <DialogFooter>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
           <Button onClick={handleConfirm}>Confirm</Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
