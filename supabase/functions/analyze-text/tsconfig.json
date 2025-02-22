@@ -1,11 +1,13 @@
- {
+{
   "compilerOptions": {
-    "target": "es2020",
-    "module": "commonjs",
+    "lib": ["dom"],
+    "allowJs": true,
+    "strict": false,
+    "jsx": "react-jsx",
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "skipLibCheck": true
+    "moduleResolution": "node",
+    "types": ["@types/react", "@types/react-dom"]
   },
-  "include": ["**/*.ts"]
+  "include": ["./**/*.ts", "./**/*.tsx"],
+  "exclude": ["node_modules"]
 }
