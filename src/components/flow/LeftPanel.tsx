@@ -8,9 +8,10 @@ export interface LeftPanelProps {
   onDownloadPDF: () => void;
   onAddNode: (type: NodeType) => void;
   onAnalyzeText: (text: string) => Promise<void>;
+  className?: string; // Add className prop
 }
 
-export function LeftPanel({ onFitView, onDownloadPDF, onAddNode, onAnalyzeText }: LeftPanelProps) {
+export function LeftPanel({ onFitView, onDownloadPDF, onAddNode, onAnalyzeText, className }: LeftPanelProps) {
   const [text, setText] = useState('');
 
   const handleAnalyze = () => {
@@ -21,7 +22,7 @@ export function LeftPanel({ onFitView, onDownloadPDF, onAddNode, onAnalyzeText }
   };
 
   return (
-    <div className="absolute left-2 top-2 z-10 flex flex-col gap-2">
+    <div className={`absolute left-2 top-2 z-10 flex flex-col gap-2 ${className}`}> {/* Apply className */}
       <div className="rounded-lg bg-white p-4 shadow-lg">
         <div className="mb-4 space-y-2">
           <Button onClick={onFitView} variant="outline" className="w-full">
@@ -82,7 +83,7 @@ export function LeftPanel({ onFitView, onDownloadPDF, onAddNode, onAnalyzeText }
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="أدخل النص هنا للتحليل..."
-          className="mb-2"
+          className="mb-2 overflow-y-auto" //Added
           dir="rtl"
         />
         <Button onClick={handleAnalyze} className="w-full" disabled={!text.trim()}>

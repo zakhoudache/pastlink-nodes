@@ -31,25 +31,39 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
   const [isEdgeDialogOpen, setIsEdgeDialogOpen] = useState(false);
   const [currentRelationship, setCurrentRelationship] = useState<{ source: string; target: string } | null>(null);
 
-  // عند إتمام تعديل العلاقة من خلال الحوار، يتم تحديث الحالة وإعادة عرض الجدول
-  const handleEdgeComplete = useCallback(
-    (type: string, customLabel?: string) => {
-      if (!currentRelationship) return;
-      
-      const newRelationship: Relationship = {
-        source: currentRelationship.source,
-        target: currentRelationship.target,
-        type,
-      };
+  // Function to handle relationship editing from the table
+  const handleEditRelationship = useCallback((relationship: Relationship, index: number) => {
+    setCurrentRelationship(relationship);
+    setIsEdgeDialogOpen(true);
+  }, []);
 
-      const updatedRelationships = [...relationships, newRelationship];
-      setRelationships(updatedRelationships);
-      onAnalysisComplete?.(updatedRelationships);
-      setIsEdgeDialogOpen(false);
-      setCurrentRelationship(null);
-    },
-    [currentRelationship, relationships, onAnalysisComplete]
-  );
+  // Function to update the relationship list when the EdgeDialog is confirmed
+  const handleEdgeComplete = useCallback((newType: string, customLabel?: string) => {
+    if (!currentRelationship) return;
+
+    // Find the index of the relationship to update
+    const indexToUpdate = relationships.findIndex(rel =>
+      rel.source === currentRelationship.source && rel.target === currentRelationship.target
+    );
+
+    if (indexToUpdate === -1) {
+      console.error("Relationship not found for updating.");
+      return;
+    }
+
+    // Create a new relationships array with the updated relationship
+    const updatedRelationships = [...relationships];
+    updatedRelationships[indexToUpdate] = {
+      ...updatedRelationships[indexToUpdate],
+      type: newType,
+    };
+
+    setRelationships(updatedRelationships);
+    onAnalysisComplete?.(updatedRelationships); // Notify parent of the changes
+    setIsEdgeDialogOpen(false);
+    setCurrentRelationship(null);
+  }, [relationships, currentRelationship, onAnalysisComplete]);
+
 
   // الدالة المسؤولة عن تحليل النص واستلام الاستجابة من API
   const analyzeText = useCallback(async () => {
@@ -66,7 +80,7 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
       });
 
       const { data, error } = await supabase.functions.invoke("analyze-text", {
-        body: { 
+        body: {
           text,
           temperature: temperature[0]
         },
@@ -153,8 +167,8 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
           <Label htmlFor="auto-highlight">Auto-highlight entities</Label>
         </div>
 
-        <Button 
-          onClick={analyzeText} 
+        <Button
+          onClick={analyzeText}
           disabled={isLoading}
           className="w-full md:w-auto"
         >
@@ -171,12 +185,9 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
             <Skeleton className="h-8 w-full" />
           </div>
         ) : (
-          <RelationshipsTable 
+          <RelationshipsTable
             relationships={relationships}
-            onEdit={(rel, index) => {
-              setCurrentRelationship({ source: rel.source, target: rel.target });
-              setIsEdgeDialogOpen(true);
-            }}
+            onEdit={(rel) => { handleEditRelationship(rel, 1) }}
             onDelete={(index) => {
               const newRelationships = [...relationships];
               newRelationships.splice(index, 1);
@@ -187,15 +198,17 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
         )}
       </div>
 
-      <EdgeDialog
-        isOpen={isEdgeDialogOpen}
-        onClose={() => {
-          setIsEdgeDialogOpen(false);
-          setCurrentRelationship(null);
-        }}
-        onConfirm={handleEdgeComplete}
-        defaultType="related-to"
-      />
+      {currentRelationship && (
+        <EdgeDialog
+          isOpen={isEdgeDialogOpen}
+          onClose={() => {
+            setIsEdgeDialogOpen(false);
+            setCurrentRelationship(null);
+          }}
+          onConfirm={handleEdgeComplete}
+          defaultType="related-to"
+        />
+      )}
     </div>
   );
 }
