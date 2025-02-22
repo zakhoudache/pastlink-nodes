@@ -1,6 +1,3 @@
-// (Your existing RelationshipsTable component code remains the same)
-
-// Analysis.tsx
 'use client';
 
 import React, { useCallback, useState } from "react";
@@ -21,14 +18,6 @@ interface Relationship {
   type: string;
 }
 
-interface ApiResponse {
-  events: Array<{date: string; description: string}>;
-  people: string[];
-  locations: string[];
-  terms: string[];
-  relationships: Relationship[];
-}
-
 export default function Analysis() {
   const [text, setText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -45,7 +34,7 @@ export default function Analysis() {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke<ApiResponse>('analyze-text', {
+      const { data, error } = await supabase.functions.invoke('analyze-text', {
         body: { 
           text,
           temperature: temperature[0]
@@ -87,58 +76,71 @@ export default function Analysis() {
   }, [text, temperature, autoHighlight, addHighlight]);
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>Historical Text</Label>
-        <Textarea
-          placeholder="Enter historical text to analyze..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          className="h-[200px]"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Temperature: {temperature}</Label>
-        <Slider
-          value={temperature}
-          onValueChange={setTemperature}
-          max={1}
-          step={0.1}
-          className="w-[200px]"
-        />
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <Switch
-          id="auto-highlight"
-          checked={autoHighlight}
-          onCheckedChange={setAutoHighlight}
-        />
-        <Label htmlFor="auto-highlight">Auto-highlight entities</Label>
-      </div>
-
-      <Button 
-        onClick={analyzeText} 
-        disabled={isLoading}
-        className="w-full md:w-auto"
-      >
-        {isLoading ? "Analyzing..." : "Analyze Text"}
-      </Button>
-
-      {isLoading ? (
+    <div className="space-y-6">
+      <div className="grid gap-4">
         <div className="space-y-2">
-          <Skeleton className="h-4 w-[250px]" />
-          <Skeleton className="h-4 w-[200px]" />
-          <Skeleton className="h-4 w-[300px]" />
+          <Label>Historical Text</Label>
+          <Textarea
+            placeholder="Enter historical text to analyze..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="h-[200px]"
+          />
         </div>
-      ) : relationships.length > 0 ? (
-        <div className="border rounded-lg p-4">
-          <RelationshipsTable relationships={relationships} />
+
+        <div className="space-y-2">
+          <Label>Temperature: {temperature}</Label>
+          <Slider
+            value={temperature}
+            onValueChange={setTemperature}
+            max={1}
+            step={0.1}
+            className="w-[200px]"
+          />
         </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">No relationships found</p>
-      )}
+
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="auto-highlight"
+            checked={autoHighlight}
+            onCheckedChange={setAutoHighlight}
+          />
+          <Label htmlFor="auto-highlight">Auto-highlight entities</Label>
+        </div>
+
+        <Button 
+          onClick={analyzeText} 
+          disabled={isLoading}
+          className="w-full md:w-auto"
+        >
+          {isLoading ? "Analyzing..." : "Analyze Text"}
+        </Button>
+      </div>
+
+      <div className="border rounded-lg p-4 space-y-4">
+        <h2 className="text-lg font-semibold">Relationship Analysis</h2>
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ) : (
+          <RelationshipsTable 
+            relationships={relationships}
+            onEdit={(rel, index) => {
+              // Add edit functionality if needed
+              console.log('Edit relationship:', rel, 'at index:', index);
+            }}
+            onDelete={(index) => {
+              // Add delete functionality if needed
+              const newRelationships = [...relationships];
+              newRelationships.splice(index, 1);
+              setRelationships(newRelationships);
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }
