@@ -1,17 +1,19 @@
 
 import { create } from 'zustand';
 
-interface Highlight {
+export interface Highlight {
   id: string;
   text: string;
-  from: number;
-  to: number;
+  type?: string;
+  from?: number;
+  to?: number;
 }
 
 interface HighlightStore {
   highlights: Highlight[];
   addHighlight: (highlight: Highlight) => void;
   removeHighlight: (id: string) => void;
+  setHighlights: (highlights: Highlight[]) => void;
   clearHighlights: () => void;
 }
 
@@ -28,6 +30,10 @@ export const useHighlightStore = create<HighlightStore>((set, get) => ({
       highlights: state.highlights.filter((h) => h.id !== id),
     }));
     localStorage.setItem('highlights', JSON.stringify(get().highlights));
+  },
+  setHighlights: (highlights) => {
+    set({ highlights });
+    localStorage.setItem('highlights', JSON.stringify(highlights));
   },
   clearHighlights: () => {
     set({ highlights: [] });

@@ -18,6 +18,7 @@ import {
   applyEdgeChanges,
   getViewportForBounds,
   useReactFlow,
+  Viewport,
 } from '@xyflow/react';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
@@ -119,17 +120,22 @@ const FlowContent = () => {
     };
 
         const fitView = useCallback(() => {
-        if (nodes.length === 0) return;
-        const bounds = getNodesBounds(nodes);
-        const viewport = getViewportForBounds(
-            bounds,
-            window.innerWidth,
-            window.innerHeight,
-            0.5,
-            2
-        );
-        setViewport(viewport);
-    }, [nodes, setViewport]);
+    if (nodes.length === 0) return;
+    const bounds = getNodesBounds(nodes);
+    const viewport = getViewportForBounds(
+        bounds,
+        {
+            width: window.innerWidth,
+            height: window.innerHeight,
+        },
+        {
+            minZoom: 0.5,
+            maxZoom: 2,
+        },
+        0.5
+    ) as Viewport;
+    setViewport(viewport);
+}, [nodes, setViewport]);
     const downloadAsPDF = useCallback(() => {
         if (nodes.length === 0) return;
 
