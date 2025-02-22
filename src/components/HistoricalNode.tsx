@@ -88,11 +88,12 @@ const typeColors: Record<NodeType, { bg: string; border: string }> = {
 export default function HistoricalNode({ data, isConnectable, id, selected }: Props) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editedData, setEditedData] = useState<HistoricalNodeData>(data);
-  const [showControls, setShowControls] = useState(false); // Added state for controls
+  const [showControls, setShowControls] = useState(false);
   const prevOpen = useRef(false);
 
-  // State to control the adjustable width of the card (default: 160px)
+  // State to control the adjustable dimensions of the card
   const [cardWidth, setCardWidth] = useState(160);
+  const [cardHeight, setCardHeight] = useState(200);
 
   useEffect(() => {
     if (!prevOpen.current && isDialogOpen) {
@@ -114,8 +115,8 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
     setIsDialogOpen(false);
   }, [id, editedData]);
 
-  // Resizing logic using a drag handle
-  const handleMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+  // Horizontal resizing (adjusts width)
+  const handleHorizontalResize = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     event.stopPropagation();
     const startX = event.clientX;
     const startWidth = cardWidth;
@@ -134,6 +135,26 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
     window.addEventListener('mouseup', handleMouseUp);
   }, [cardWidth]);
 
+  // Vertical resizing (adjusts height)
+  const handleVerticalResize = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    const startY = event.clientY;
+    const startHeight = cardHeight;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newHeight = Math.max(100, startHeight + e.clientY - startY);
+      setCardHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }, [cardHeight]);
+
   if (!data) {
     return <div>خطأ: لم يتم توفير البيانات</div>;
   }
@@ -151,7 +172,7 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
           dir="rtl"
           onDoubleClick={handleDoubleClick}
           tabIndex={0}
-          style={{ width: cardWidth }}
+          style={{ width: cardWidth, height: cardHeight }}
         >
           <Handle
             type="target"
@@ -183,7 +204,6 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
                 </button>
                 <button
                   onClick={() => {
-                    // Dispatch or call your delete function/event here
                     console.log('Deleting node', id);
                     setShowControls(false);
                   }}
@@ -191,7 +211,6 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
                 >
                   حذف
                 </button>
-                {/* Additional control buttons can be added here */}
               </div>
             )}
 
@@ -215,10 +234,15 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
             className="!bg-muted-foreground"
           />
         </Card>
-        {/* Resize handle placed at the bottom-right corner */}
+        {/* Horizontal resize handle (right edge) */}
         <div
-          onMouseDown={handleMouseDown}
-          className="absolute bottom-0 right-0 w-5 h-5 cursor-ew-resize bg-gray-400 hover:bg-gray-500 rounded-full shadow-md transition-colors duration-200"
+          onMouseDown={handleHorizontalResize}
+          className="absolute right-[-5px] top-1/2 transform -translate-y-1/2 w-4 h-8 cursor-ew-resize bg-gray-400 hover:bg-gray-500 rounded-md shadow-md transition-colors duration-200"
+        />
+        {/* Vertical resize handle (bottom edge) */}
+        <div
+          onMouseDown={handleVerticalResize}
+          className="absolute bottom-[-5px] left-1/2 transform -translate-x-1/2 w-8 h-4 cursor-ns-resize bg-gray-400 hover:bg-gray-500 rounded-md shadow-md transition-colors duration-200"
         />
       </div>
 
