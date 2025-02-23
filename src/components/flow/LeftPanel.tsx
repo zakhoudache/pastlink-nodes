@@ -1,4 +1,3 @@
-// src/components/flow/LeftPanel.tsx
 import React, { useState } from 'react';
 import { NodeType } from '../HistoricalNode';
 import { Button } from '@/components/ui/button';
@@ -26,9 +25,9 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   additionalButtons,
 }) => {
   const [text, setText] = useState('');
-  const [width, setWidth] = useState(250); // Reduced initial width
-  const [height, setHeight] = useState(400); // Reduced initial height
-  const [position, setPosition] = useState({ x: 10, y: 10 }); // Adjusted initial position
+  const [width, setWidth] = useState(250);
+  const [height, setHeight] = useState(400);
+  const [position, setPosition] = useState({ x: 10, y: 10 });
 
   const handleAnalyze = () => {
     if (text.trim()) {
@@ -53,16 +52,11 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       onStop={handleDragStop}
     >
       <div style={{ position: 'absolute', zIndex: 1000 }}>
-        <div
-          className="drag-handle bg-gray-100 px-3 py-2 text-sm font-medium border-b border-gray-200 cursor-move"
-        >
+        <div className="drag-handle bg-gray-100 px-3 py-2 text-sm font-medium border-b border-gray-200 cursor-move">
           Drag Me
         </div>
         <Resizable
-          size={{
-            width: width,
-            height: height,
-          }}
+          size={{ width, height }}
           minWidth={200}
           minHeight={300}
           maxWidth={400}
@@ -80,10 +74,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
             topLeft: false,
           }}
         >
-          <div
-            className="rounded-lg bg-white p-4 shadow-lg"
-            style={{ width: '100%', height: '100%' }}
-          >
+          <div className="rounded-lg bg-white p-4 shadow-lg" style={{ width: '100%', height: '100%' }}>
             <div className="mb-4 space-y-2">
               <Button onClick={onFitView} variant="outline" className="w-full">
                 Fit View
