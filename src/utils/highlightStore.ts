@@ -1,6 +1,6 @@
-// src/utils/highlightStore.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import produce from 'immer';
 
 export interface Highlight {
   id: string;
@@ -23,21 +23,37 @@ export const useHighlightStore = create<HighlightState>()(
     (set, get) => ({
       highlights: [],
       addHighlight: (highlight: Highlight) =>
-        set((state) => ({ highlights: [...state.highlights, highlight] })),
+        set(
+          produce((state: HighlightState) => {
+            state.highlights.push(highlight);
+          })
+        ),
       removeHighlight: (id: string) =>
-        set((state) => ({ highlights: state.highlights.filter((h) => h.id !== id) })),
+        set(
+          produce((state: HighlightState) => {
+            state.highlights = state.highlights.filter((h) => h.id !== id);
+          })
+        ),
       updateHighlight: (highlight: Highlight) =>
-        set((state) => ({
-          highlights: state.highlights.map((h) =>
-            h.id === highlight.id ? { ...h, ...highlight } : h
-          ),
-        })),
-      clearHighlights: () => set({ highlights: [] }),
+        set(
+          produce((state: HighlightState) => {
+            const index = state.highlights.findIndex((h) => h.id === highlight.id);
+            if (index !== -1) {
+              state.highlights[index] = { ...state.highlights[index], ...highlight };
+            }
+          })
+        ),
+      clearHighlights: () =>
+        set(
+          produce((state: HighlightState) => {
+            state.highlights = [];
+          })
+        ),
       setHighlights: (highlights: Highlight[]) => set({ highlights }),
     }),
     {
-      name: 'highlight-store', // key for localStorage
-      // Optionally, specify storage: getStorage() => localStorage
+      name: 'highlight-store', // Key for localStorage persistence
+      // Optionally, you can specify a custom storage here.
     }
   )
 );
