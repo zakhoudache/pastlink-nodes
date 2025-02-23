@@ -16,7 +16,6 @@ interface NodeContextPanelProps {
 }
 
 async function generateNodeContext(nodeData: HistoricalNodeData) {
-  // Call the "analyze-node" edge function with the node data.
   const { data, error } = await supabase.functions.invoke("analyze-node", {
     body: {
       label: nodeData.label,
@@ -25,12 +24,18 @@ async function generateNodeContext(nodeData: HistoricalNodeData) {
     },
   });
 
+  console.log("Supabase function response:", { data, error });
+
   if (error) {
     console.error("Error generating context:", error);
     throw new Error(error.message || "Failed to analyze node");
   }
 
-  // Assumes the function returns an object with a 'context' property.
+  if (!data || !data.context) {
+    console.error("Unexpected response structure:", data);
+    throw new Error("Invalid response from analyze-node function");
+  }
+
   return data.context;
 }
 
@@ -51,10 +56,16 @@ export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
         <SidebarHeader className="border-b border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-xl">{selectedNode.data.type === 'person' ? '👤' : '📝'}</span>
+              <span className="text-xl">
+                {selectedNode.data.type === 'person' ? '👤' : '📝'}
+              </span>
               <h2 className="text-lg font-semibold">{selectedNode.data.label}</h2>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => window.dispatchEvent(new CustomEvent('closeNodeContext'))}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.dispatchEvent(new CustomEvent('closeNodeContext'))}
+            >
               ✕
             </Button>
           </div>
