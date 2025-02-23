@@ -59,12 +59,12 @@ export function NodeContextPanel({
       <div className="w-full flex flex-col items-end">
         <Sidebar className="w-full">
           <SidebarHeader className="w-full border-b border-gray-200 p-4 text-right">
-            <div className="flex justify-between items-center">
-              <div className="flex flex-col items-end">
-                <span className="text-xl">
+            <div className="flex justify-between items-center mx-[204px]">
+              <div className="flex flex-col items-end mx-[240px] px-[240px]">
+                <span className="mx-0 px-[240px] text-xl text-right">
                   {selectedNode.data.type === 'person' ? '👤' : '📝'}
                 </span>
-                <h2 className="text-lg font-semibold">{selectedNode.data.label}</h2>
+                <h2 className="text-lg font-semibold px-[240px] text-justify py-px my-[3px] mx-[9px]">{selectedNode.data.label}</h2>
               </div>
               <Button variant="ghost" size="sm" onClick={() => window.dispatchEvent(new CustomEvent('closeNodeContext'))}>
                 ✕
