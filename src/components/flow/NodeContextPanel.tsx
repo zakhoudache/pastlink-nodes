@@ -6,7 +6,7 @@ import { Sidebar, SidebarContent, SidebarHeader, SidebarProvider } from '@/compo
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import type { HistoricalNodeData } from '../HistoricalNode';
-import { supabase } from '@/lib/supabaseClient'; // Adjust the import path as needed
+import { supabase } from "@/integrations/supabase/client";
 
 interface NodeContextPanelProps {
   selectedNode: {
