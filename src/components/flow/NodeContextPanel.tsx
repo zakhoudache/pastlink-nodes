@@ -55,8 +55,8 @@ export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
 
   return (
     <SidebarProvider>
-      <Sidebar className="px-0 my-px py-0">
-        <SidebarHeader className="border-b border-gray-200 p-4">
+      <Sidebar className="flex flex-col items-end px-0 my-px py-0">
+        <SidebarHeader className="border-b border-gray-200 p-4 w-full text-right">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xl">
@@ -73,7 +73,7 @@ export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
             </Button>
           </div>
         </SidebarHeader>
-        <SidebarContent className="p-4">
+        <SidebarContent className="p-4 w-full text-right">
           <ScrollArea className="h-[calc(100vh-120px)]">
             {isLoading ? (
               <div className="space-y-4">
