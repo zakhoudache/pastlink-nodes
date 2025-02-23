@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "lib": ["dom"],
+    "lib": ["dom", "es2020"],
     "allowJs": true,
     "strict": false,
     "jsx": "react-jsx",

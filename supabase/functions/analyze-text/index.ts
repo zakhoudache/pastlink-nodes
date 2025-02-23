@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@^0.3.0'
 
@@ -25,36 +24,45 @@ Deno.serve(async (req) => {
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
 
-    const prompt = `Analyze this historical text and identify relationships between entities. Return ONLY a JSON object with this exact format:
-    {
-      "relationships": [
-        {
-          "source": "entity name",
-          "target": "other entity name",
-          "type": "type of relationship"
-        }
-      ]
-    }
-    
-    Text to analyze: ${text}`
+    // Construct a nicely formatted prompt with proper indentation
+    const prompt = `
+Analyze this historical text and identify relationships between entities.
+Return ONLY a JSON object with this exact format:
 
+{
+  "relationships": [
+    {
+      "source": "entity name",
+      "target": "other entity name",
+      "type": "type of relationship"
+    }
+  ]
+}
+
+Text to analyze:
+${text}
+    `.trim()
+
+    // Optionally pass temperature if supported by the API:
+    // const result = await model.generateContent(prompt, { temperature })
     const result = await model.generateContent(prompt)
     const response = await result.response
-    const analysisText = response.text()
+    const analysisText = await response.text()
     
-    // Clean and parse the JSON response
-    let cleanJson = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '')
+    // Clean the analysis text by removing markdown code fences (if present)
+    let cleanJson = analysisText.replace(/```json\s*/g, '').replace(/```/g, '').trim()
     
     try {
       const parsedAnalysis = JSON.parse(cleanJson)
-      console.log('Successfully parsed analysis:', parsedAnalysis)
+      // Log the parsed JSON in a pretty printed format
+      console.log('Successfully parsed analysis:', JSON.stringify(parsedAnalysis, null, 2))
       
       if (!Array.isArray(parsedAnalysis.relationships)) {
         throw new Error('Invalid response format: relationships must be an array')
       }
 
       return new Response(
-        JSON.stringify(parsedAnalysis),
+        JSON.stringify(parsedAnalysis, null, 2),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200 
