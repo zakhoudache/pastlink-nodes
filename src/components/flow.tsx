@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCallback, useState, useEffect } from 'react';
@@ -59,7 +60,6 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
   const [isEdgeDialogOpen, setIsEdgeDialogOpen] = useState(false);
   const [edgeSourceNode, setEdgeSourceNode] = useState<string | null>(null);
   const [edgeTargetNode, setEdgeTargetNode] = useState<string | null>(null);
-  const [useAutoLayout, setUseAutoLayout] = useState(false);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
 
   const { setViewport } = useReactFlow();
@@ -73,50 +73,46 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
     setIsMounted(true);
   }, []);
 
-  useEffect(() => {
-    const handleNodeUpdate = (event: Event) => {
-      const customEvent = event as CustomEvent<{ id: string; data: HistoricalNodeData }>;
-      const { id, data } = customEvent.detail;
-      setNodes((nds) =>
-        nds.map((node) => (node.id === id ? { ...node, data } : node))
-      );
-      window.dispatchEvent(
-        new CustomEvent('nodesChange', {
-          detail: nodes.map((node) => (node.id === id ? { ...node, data } : node)),
-        })
-      );
-    };
+  const handleDownloadPDF = useCallback(async () => {
+    try {
+      const flowElement = document.querySelector('.react-flow');
+      if (!flowElement) return;
 
-    window.addEventListener('updateNodeData', handleNodeUpdate);
-    return () => window.removeEventListener('updateNodeData', handleNodeUpdate);
-  }, [nodes]);
+      const dataUrl = await toPng(flowElement as HTMLElement, {
+        backgroundColor: '#ffffff',
+        quality: 1,
+        pixelRatio: 3,
+        width: flowElement.scrollWidth * 2,
+        height: flowElement.scrollHeight * 2,
+      });
 
-  const fitView = useCallback(() => {
-    if (nodes.length === 0) return;
-    const bounds = getNodesBounds(nodes);
-    const viewport = getViewportForBounds(bounds, {
-      width: window.innerWidth,
-      height: window.innerHeight,
-    }, { minZoom: 0.5, maxZoom: 2 }, 0.5);
-    setViewport(viewport);
-  }, [nodes, setViewport]);
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [flowElement.scrollWidth, flowElement.scrollHeight],
+      });
+
+      pdf.addImage(dataUrl, 'PNG', 0, 0, flowElement.scrollWidth, flowElement.scrollHeight, '', 'FAST');
+      pdf.save('flow-diagram.pdf');
+      toast.success('تم تحميل الملف بنجاح');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('حدث خطأ أثناء تحميل الملف');
+    }
+  }, []);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      const updatedNodes = applyNodeChanges(changes, nodes) as Node<HistoricalNodeData>[];
-      setNodes(updatedNodes);
-      window.dispatchEvent(new CustomEvent('nodesChange', { detail: updatedNodes }));
+      setNodes((nds) => applyNodeChanges(changes, nds) as Node<HistoricalNodeData>[]);
     },
-    [nodes]
+    []
   );
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      const updatedEdges = applyEdgeChanges(changes, edges) as Edge<HistoricalEdgeData>[];
-      setEdges(updatedEdges);
-      window.dispatchEvent(new CustomEvent('edgesChange', { detail: updatedEdges }));
+      setEdges((eds) => applyEdgeChanges(changes, eds) as Edge<HistoricalEdgeData>[]);
     },
-    [edges]
+    []
   );
 
   const onConnect = useCallback((params: Connection) => {
@@ -126,44 +122,6 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
       setIsEdgeDialogOpen(true);
     }
   }, []);
-
-  // Auto layout function
-  const autoLayoutNodes = useCallback(() => {
-    const g = new dagre.graphlib.Graph();
-    g.setGraph({ rankdir: 'TB', nodesep: 100, ranksep: 100 });
-    g.setDefaultEdgeLabel(() => ({}));
-
-    nodes.forEach((node) => {
-      g.setNode(node.id, { 
-        width: 200,  // Default width
-        height: 100  // Default height
-      });
-    });
-
-    edges.forEach((edge) => {
-      g.setEdge(edge.source, edge.target);
-    });
-
-    dagre.layout(g);
-
-    const newNodes = nodes.map((node) => {
-      const nodeWithPosition = g.node(node.id);
-      return {
-        ...node,
-        position: {
-          x: nodeWithPosition.x - nodeWithPosition.width / 2,
-          y: nodeWithPosition.y - nodeWithPosition.height / 2,
-        },
-        style: {
-          ...node.style,
-          width: nodeWithPosition.width,
-          height: nodeWithPosition.height,
-        },
-      };
-    });
-
-    setNodes(newNodes);
-  }, [nodes, edges]);
 
   if (!isMounted) return null;
 
@@ -185,18 +143,18 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
         <Background />
         <Controls />
         
-        <div className="absolute left-0 top-0 z-10 p-4">
+        <div className="fixed left-4 top-4 z-50">
           <LeftPanel
-            onFitView={fitView}
-            onDownloadPDF={() => {}}
+            onFitView={() => {}}
+            onDownloadPDF={handleDownloadPDF}
             onAddNode={() => {}}
             onAnalyzeText={async () => {}}
-            onAutoLayout={autoLayoutNodes}
+            onAutoLayout={() => {}}
             distributeNodesEvenly={() => {}}
           />
         </div>
         
-        <div className="absolute right-0 top-0 z-10 p-4">
+        <div className="fixed right-4 top-4 z-50 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg">
           <RightPanel
             highlights={highlights}
             onCreateNodeFromHighlight={() => {}}

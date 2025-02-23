@@ -29,7 +29,8 @@ export function HistoricalEdge({
     targetPosition,
   });
 
-  const edgeLabel = (data as HistoricalEdgeData)?.customLabel || (data as HistoricalEdgeData)?.type || 'connected';
+  const edgeData = data as HistoricalEdgeData;
+  const edgeLabel = edgeData?.customLabel || edgeData?.type || 'connected';
 
   return (
     <>
