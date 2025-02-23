@@ -330,13 +330,14 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
         defaultType="related-to"
       />
 
-
-
-      {selectedNode && (
-        <div className="fixed right-0 top-0 h-full w-80 z-50 bg-background border-l shadow-lg">
-          <NodeContextPanel selectedNode={selectedNode} />
-        </div>
-      )}
+      {/* FIX: Place NodeContextPanel inside SidebarProvider */}
+      <SidebarProvider>
+        {selectedNode && (
+          <div className="fixed right-0 top-0 h-full w-80 z-50 bg-background border-l shadow-lg">
+            <NodeContextPanel selectedNode={selectedNode} />
+          </div>
+        )}
+      </SidebarProvider>
     </div>
   );
 };
