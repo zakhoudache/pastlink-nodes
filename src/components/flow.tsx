@@ -1,19 +1,39 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { ReactFlowProvider, addEdge, useNodesState, useEdgesState, MarkerType } from '@xyflow/react';
-import FlowContent from './FlowContent';
-import { RightPanel, Highlight } from './flow/RightPanel'; // Import Highlight type
-import type { Edge, Node } from '@xyflow/react';
-import type { HistoricalNodeData, HistoricalEdgeData } from './HistoricalNode';
-import { v4 as uuidv4 } from 'uuid';
-import HistoricalNode from './HistoricalNode';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { useCallback, useState, useEffect } from 'react';
+import '@xyflow/react/dist/style.css';
+import {
+  ReactFlow,
+  ReactFlowProvider,
+  EdgeTypes,
+  MarkerType,
+  Background,
+  Controls,
+  Edge,
+  Node,
+  NodeChange,
+  Connection,
+  EdgeChange,
+  applyNodeChanges,
+  applyEdgeChanges,
+  getViewportForBounds,
+  useReactFlow,
+} from '@xyflow/react';
+import { toPng } from 'html-to-image';
+import { jsPDF } from 'jspdf';
+import { toast } from 'sonner';
+import HistoricalNode, { NodeType, HistoricalNodeData } from './HistoricalNode';
+import { HistoricalEdge, HistoricalEdgeData } from './HistoricalEdge';
+import { EdgeDialog } from './EdgeDialog';
+import { getNodePosition, getNodesBounds } from '../utils/flowUtils';
+import { LeftPanel } from './flow/LeftPanel';
+import { RightPanel, Highlight } from './flow/RightPanel';
+import { NodeContextPanel } from './flow/NodeContextPanel';
+import dagre from 'dagre';
 
-interface FlowProps {
-  initialNodes: Node<HistoricalNodeData>[];
-  initialEdges: Edge<HistoricalEdgeData>[];
-}
+const edgeTypes: EdgeTypes = {
+  historical: HistoricalEdge,
+};
 
 const defaultEdgeOptions = {
   type: 'historical' as const,
@@ -28,63 +48,301 @@ const nodeTypes = {
   historical: HistoricalNode,
 };
 
-export default function Flow({ initialNodes, initialEdges }: FlowProps) {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange, addEdge] = useEdgesState(initialEdges);
+interface FlowProps {
+  initialNodes: Node<HistoricalNodeData>[];
+  initialEdges: Edge<HistoricalEdgeData>[];
+}
 
-  // Highlights state
-  const [highlights, setHighlights] = useState<Highlight[]>([]); // Initialized as an empty array
+const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
+  const [isMounted, setIsMounted] = useState(false);
+  const [nodes, setNodes] = useState<Node<HistoricalNodeData>[]>(initialNodes);
+  const [edges, setEdges] = useState<Edge<HistoricalEdgeData>[]>(initialEdges);
+  const [isEdgeDialogOpen, setIsEdgeDialogOpen] = useState(false);
+  const [edgeSourceNode, setEdgeSourceNode] = useState<string | null>(null);
+  const [edgeTargetNode, setEdgeTargetNode] = useState<string | null>(null);
+  const [useAutoLayout, setUseAutoLayout] = useState(false);
+  const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [selectedNode, setSelectedNode] = useState<{ id: string; data: HistoricalNodeData } | null>(null);
 
-  // Function to add a new highlight
-  const addHighlight = useCallback((text: string) => {
-    const newHighlight: Highlight = { id: uuidv4(), text };
-    setHighlights((prevHighlights) => [...prevHighlights, newHighlight]);
+  const { setViewport, getZoom } = useReactFlow();
+
+  useEffect(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges]);
+
+  useEffect(() => {
+    setIsMounted(true);
   }, []);
 
-  // Function to remove a highlight
-  const removeHighlight = useCallback((id: string) => {
-    setHighlights((prevHighlights) => prevHighlights.filter((highlight) => highlight.id !== id));
-  }, []);
-
-  // Function to handle creating a node from a highlight
-  const handleCreateNodeFromHighlight = (highlight: Highlight, type: string) => {
-    console.log('Creating node from highlight:', highlight, type);
-
-    const newNodeId = uuidv4();
-    const newNode: Node<HistoricalNodeData> = {
-      id: newNodeId,
-      type: 'historical',
-      position: { x: 100, y: 100 },
-      data: {
-        label: highlight.text,
-        type: type as HistoricalNodeData['type'],
-        description: '',
-      },
+  useEffect(() => {
+    const handleNodeUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent<{ id: string; data: HistoricalNodeData }>;
+      const { id, data } = customEvent.detail;
+      setNodes((nds) =>
+        nds.map((node) => (node.id === id ? { ...node, data } : node))
+      );
+      window.dispatchEvent(
+        new CustomEvent('nodesChange', {
+          detail: nodes.map((node) => (node.id === id ? { ...node, data } : node)),
+        })
+      );
     };
 
-    setNodes((prevNodes) => [...prevNodes, newNode]);
-    removeHighlight(highlight.id); // Remove the highlight after node creation.
-  };
+    window.addEventListener('updateNodeData', handleNodeUpdate);
+    return () => window.removeEventListener('updateNodeData', handleNodeUpdate);
+  }, [nodes]);
+
+  useEffect(() => {
+    const handleCloseContext = () => {
+      setSelectedNode(null);
+    };
+    window.addEventListener('closeNodeContext', handleCloseContext);
+    return () => window.removeEventListener('closeNodeContext', handleCloseContext);
+  }, []);
+
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node<HistoricalNodeData>) => {
+    setSelectedNode({ id: node.id, data: node.data });
+  }, []);
+
+  const fitView = useCallback(() => {
+    if (nodes.length === 0) return;
+    const bounds = getNodesBounds(nodes);
+    const viewport = getViewportForBounds(bounds, {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    }, { minZoom: 0.5, maxZoom: 2 }, 0.5);
+    setViewport(viewport);
+  }, [nodes, setViewport]);
+
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      const updatedNodes = applyNodeChanges(changes, nodes) as Node<HistoricalNodeData>[];
+      setNodes(updatedNodes);
+      window.dispatchEvent(new CustomEvent('nodesChange', { detail: updatedNodes }));
+    },
+    [nodes]
+  );
+
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      const updatedEdges = applyEdgeChanges(changes, edges) as Edge<HistoricalEdgeData>[];
+      setEdges(updatedEdges);
+      window.dispatchEvent(new CustomEvent('edgesChange', { detail: updatedEdges }));
+    },
+    [edges]
+  );
+
+  const onConnect = useCallback((params: Connection) => {
+    if (params.source && params.target) {
+      setEdgeSourceNode(params.source);
+      setEdgeTargetNode(params.target);
+      setIsEdgeDialogOpen(true);
+    }
+  }, []);
+
+  const autoLayoutNodes = useCallback(() => {
+    const g = new dagre.graphlib.Graph();
+    g.setGraph({ rankdir: 'TB', nodesep: 100, ranksep: 100 });
+    g.setDefaultEdgeLabel(() => ({}));
+
+    nodes.forEach((node) => {
+      g.setNode(node.id, { 
+        width: 200,  // Default width
+        height: 100  // Default height
+      });
+    });
+
+    edges.forEach((edge) => {
+      g.setEdge(edge.source, edge.target);
+    });
+
+    dagre.layout(g);
+
+    const newNodes = nodes.map((node) => {
+      const nodeWithPosition = g.node(node.id);
+      return {
+        ...node,
+        position: {
+          x: nodeWithPosition.x - nodeWithPosition.width / 2,
+          y: nodeWithPosition.y - nodeWithPosition.height / 2,
+        },
+        style: {
+          ...node.style,
+          width: nodeWithPosition.width,
+          height: nodeWithPosition.height,
+        },
+      };
+    });
+
+    setNodes(newNodes);
+  }, [nodes, edges]);
+
+  const detectLayoutOrientation = useCallback(() => {
+    if (nodes.length < 2) return 'vertical';
+    
+    let maxHorizontalDist = 0;
+    let maxVerticalDist = 0;
+    
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const horizontalDist = Math.abs(nodes[i].position.x - nodes[j].position.x);
+        const verticalDist = Math.abs(nodes[i].position.y - nodes[j].position.y);
+        maxHorizontalDist = Math.max(maxHorizontalDist, horizontalDist);
+        maxVerticalDist = Math.max(maxVerticalDist, verticalDist);
+      }
+    }
+    
+    return maxHorizontalDist > maxVerticalDist ? 'horizontal' : 'vertical';
+  }, [nodes]);
+
+  const downloadAsPDF = useCallback(() => {
+    if (nodes.length === 0) {
+      toast.error('No nodes to export');
+      return;
+    }
+
+    const flowElement = document.querySelector('.react-flow') as HTMLElement;
+    if (!flowElement) {
+      toast.error('Could not find flow element');
+      return;
+    }
+
+    const flowWrapper = flowElement.querySelector('.react-flow__viewport') as HTMLElement || flowElement;
+    const nodesBounds = getNodesBounds(nodes);
+    const orientation = detectLayoutOrientation();
+    
+    const padding = 50;
+    let width = nodesBounds.width + padding * 2;
+    let height = nodesBounds.height + padding * 2;
+    
+    if (orientation === 'horizontal') {
+      if (width / height > 2) {
+        height = Math.max(height, width / 2);
+      }
+    } else {
+      if (height / width > 2) {
+        width = Math.max(width, height / 2);
+      }
+    }
+
+    const originalStyle = {
+      width: flowWrapper.style.width,
+      height: flowWrapper.style.height,
+      transform: flowWrapper.style.transform,
+    };
+
+    const optimalZoom = Math.min(
+      (width - padding * 2) / nodesBounds.width,
+      (height - padding * 2) / nodesBounds.height
+    );
+
+    flowWrapper.style.width = `${width}px`;
+    flowWrapper.style.height = `${height}px`;
+    flowWrapper.style.transform = `translate(${padding}px, ${padding}px) scale(${optimalZoom})`;
+
+    toast.promise(
+      new Promise((resolve, reject) => {
+        requestAnimationFrame(() => {
+          toPng(flowWrapper, {
+            backgroundColor: '#ffffff',
+            width,
+            height,
+            style: {
+              width: `${width}px`,
+              height: `${height}px`,
+            },
+          })
+            .then((dataUrl) => {
+              const pdf = new jsPDF({
+                orientation: orientation === 'horizontal' ? 'landscape' : 'portrait',
+                unit: 'px',
+                format: [width, height],
+              });
+
+              pdf.addImage(dataUrl, 'PNG', 0, 0, width, height);
+              pdf.save('historical-flow.pdf');
+              resolve('PDF generated successfully');
+            })
+            .catch((error) => {
+              console.error('Failed to generate PDF:', error);
+              reject(new Error('Failed to generate PDF'));
+            })
+            .finally(() => {
+              flowWrapper.style.width = originalStyle.width;
+              flowWrapper.style.height = originalStyle.height;
+              flowWrapper.style.transform = originalStyle.transform;
+            });
+        });
+      }),
+      {
+        loading: 'Generating PDF...',
+        success: 'PDF downloaded successfully',
+        error: 'Failed to generate PDF',
+      }
+    );
+  }, [nodes, detectLayoutOrientation]);
+
+  if (!isMounted) return null;
 
   return (
-    <ReactFlowProvider>
-      <SidebarProvider>
-        <div className="flex w-full h-screen">
-          <div className="relative flex-1">
-            <FlowContent
-              initialEdges={edges}
-              initialNodes={nodes}
-              highlights={highlights}
-              onAddHighlight={addHighlight} // Pass the addHighlight function to FlowContent
-            />
-          </div>
-
-          <RightPanel
-            highlights={highlights}
-            onCreateNodeFromHighlight={handleCreateNodeFromHighlight}
+    <div className="h-full w-full relative">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
+        onNodeClick={onNodeClick}
+        fitView
+        minZoom={0.1}
+        maxZoom={4}
+      >
+        <Background />
+        <Controls />
+        
+        <div className="absolute left-0 top-0 z-10 p-4">
+          <LeftPanel
+            onFitView={fitView}
+            onDownloadPDF={downloadAsPDF}
+            onAddNode={() => {}}
+            onAnalyzeText={async () => {}}
+            onAutoLayout={autoLayoutNodes}
+            distributeNodesEvenly={() => {}}
           />
         </div>
-      </SidebarProvider>
+        
+        <div className="absolute right-0 top-0 z-10 p-4">
+          <RightPanel
+            highlights={highlights}
+            onCreateNodeFromHighlight={() => {}}
+          />
+        </div>
+      </ReactFlow>
+
+      <EdgeDialog
+        isOpen={isEdgeDialogOpen}
+        onClose={() => setIsEdgeDialogOpen(false)}
+        onConfirm={() => {}}
+        defaultType="related-to"
+      />
+
+      {selectedNode && (
+        <div className="fixed right-0 top-0 h-full w-80 z-50 bg-background border-l shadow-lg">
+          <NodeContextPanel selectedNode={selectedNode} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default function Flow({ initialEdges, initialNodes }: FlowProps) {
+  return (
+    <ReactFlowProvider>
+      <FlowContent initialEdges={initialEdges} initialNodes={initialNodes} />
     </ReactFlowProvider>
   );
 }
