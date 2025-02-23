@@ -165,34 +165,6 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
     setNodes(newNodes);
   }, [nodes, edges]);
 
-  const handleDownloadPDF = useCallback(async () => {
-    try {
-      const flowElement = document.querySelector('.react-flow');
-      if (!flowElement) return;
-
-      const dataUrl = await toPng(flowElement as HTMLElement, {
-        backgroundColor: '#ffffff',
-        quality: 1,
-        pixelRatio: 2, // Increase pixel ratio for better quality
-        width: flowElement.scrollWidth * 2,
-        height: flowElement.scrollHeight * 2,
-      });
-
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'px',
-        format: [flowElement.scrollWidth, flowElement.scrollHeight],
-      });
-
-      pdf.addImage(dataUrl, 'PNG', 0, 0, flowElement.scrollWidth, flowElement.scrollHeight);
-      pdf.save('flow-diagram.pdf');
-      toast.success('تم تحميل الملف بنجاح');
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      toast.error('حدث خطأ أثناء تحميل الملف');
-    }
-  }, []);
-
   if (!isMounted) return null;
 
   return (
@@ -213,10 +185,10 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
         <Background />
         <Controls />
         
-        <div className="fixed left-4 top-4 z-50">
+        <div className="absolute left-0 top-0 z-10 p-4">
           <LeftPanel
             onFitView={fitView}
-            onDownloadPDF={handleDownloadPDF}
+            onDownloadPDF={() => {}}
             onAddNode={() => {}}
             onAnalyzeText={async () => {}}
             onAutoLayout={autoLayoutNodes}
@@ -224,13 +196,10 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
           />
         </div>
         
-        <div className="fixed right-4 top-4 z-50">
+        <div className="absolute right-0 top-0 z-10 p-4">
           <RightPanel
             highlights={highlights}
-            onCreateNodeFromHighlight={(highlight, type) => {
-              // Add node creation logic here
-              console.log('Creating node from highlight:', highlight, type);
-            }}
+            onCreateNodeFromHighlight={() => {}}
           />
         </div>
       </ReactFlow>
