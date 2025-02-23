@@ -88,6 +88,7 @@ const typeColors: Record<NodeType, { bg: string; border: string }> = {
 export default function HistoricalNode({ data, isConnectable, id, selected }: Props) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editedData, setEditedData] = useState<HistoricalNodeData>(data);
+  const nodeRef = useRef<HTMLDivElement>(null);
   const [showControls, setShowControls] = useState(false);
   const [cardWidth, setCardWidth] = useState(160);
   const [cardHeight, setCardHeight] = useState(200);
@@ -99,6 +100,16 @@ export default function HistoricalNode({ data, isConnectable, id, selected }: Pr
     }
     prevOpen.current = isDialogOpen;
   }, [isDialogOpen, data]);
+
+  useEffect(() => {
+    if (nodeRef.current) {
+      // Auto-adjust node size based on content
+      const contentHeight = nodeRef.current.scrollHeight;
+      const contentWidth = nodeRef.current.scrollWidth;
+      nodeRef.current.style.width = `${Math.max(200, contentWidth + 32)}px`;
+      nodeRef.current.style.height = `${Math.max(100, contentHeight + 32)}px`;
+    }
+  }, [data]);
 
   const handleDoubleClick = useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
