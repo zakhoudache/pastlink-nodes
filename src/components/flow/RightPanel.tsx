@@ -1,3 +1,4 @@
+
 // src/components/flow/RightPanel.tsx
 import { useState, useEffect } from 'react';
 import { NodeType } from '../HistoricalNode';
@@ -41,8 +42,12 @@ export function RightPanel({ highlights, onCreateNodeFromHighlight }: RightPanel
     onCreateNodeFromHighlight({ id: highlight.id, text: highlight.text }, type);
   };
 
+  if (highlights.length === 0) {
+    return null;
+  }
+
   return (
-    <aside className="absolute top-2 right-2 w-64 p-4 bg-gray-100 border-l border-gray-300 rounded-lg shadow-lg z-50">
+    <aside className="absolute top-2 right-2 w-64 p-4 bg-white border-l border-gray-300 rounded-lg shadow-lg z-50">
       <h2 className="text-lg font-semibold mb-4">Highlights</h2>
       <ul>
         {highlights.map((highlight) => (

@@ -1,11 +1,12 @@
 
-// src/components/HomePage.tsx
 import React, { useState, useCallback, useEffect } from 'react';
 import { Node, Edge } from '@xyflow/react';
 import Analysis from '../pages/Analysis';
 import Flow from './flow';
 import { getNodePosition } from '../utils/flowUtils';
 import { Toaster, toast } from 'sonner';
+import { HistoricalNodeData } from './HistoricalNode';
+import { HistoricalEdgeData } from './HistoricalEdge';
 
 interface Relationship {
   source: string;
@@ -14,25 +15,24 @@ interface Relationship {
 }
 
 export default function HomePage() {
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>([]);
+  const [nodes, setNodes] = useState<Node<HistoricalNodeData>[]>([]);
+  const [edges, setEdges] = useState<Edge<HistoricalEdgeData>[]>([]);
 
-  // UseEffect to listen for node and edge updates from the Flow component.
   useEffect(() => {
-    const handleNodesChange = (e: CustomEvent<Node[]>) => { // Type the event
+    const handleNodesChange = (e: CustomEvent<Node<HistoricalNodeData>[]>) => {
       setNodes(e.detail);
     };
 
-    const handleEdgesChange = (e: CustomEvent<Edge[]>) => { // Type the event
+    const handleEdgesChange = (e: CustomEvent<Edge<HistoricalEdgeData>[]>) => {
       setEdges(e.detail);
     };
 
-    window.addEventListener('nodesChange', handleNodesChange as EventListener); // Cast to EventListener
-    window.addEventListener('edgesChange', handleEdgesChange as EventListener); // Cast to EventListener
+    window.addEventListener('nodesChange', handleNodesChange as EventListener);
+    window.addEventListener('edgesChange', handleEdgesChange as EventListener);
 
     return () => {
-      window.removeEventListener('nodesChange', handleNodesChange as EventListener); // Cast
-      window.removeEventListener('edgesChange', handleEdgesChange as EventListener); // Cast
+      window.removeEventListener('nodesChange', handleNodesChange as EventListener);
+      window.removeEventListener('edgesChange', handleEdgesChange as EventListener);
     };
   }, []);
 
@@ -46,7 +46,7 @@ export default function HomePage() {
           type: 'historical',
           position: getNodePosition(nodes),
           data: {
-            type: 'event',
+            type: 'event' as const,
             label: rel.source
           }
         } : null,
@@ -55,7 +55,7 @@ export default function HomePage() {
           type: 'historical',
           position: getNodePosition(nodes),
           data: {
-            type: 'event',
+            type: 'event' as const,
             label: rel.target
           }
         } : null
@@ -71,15 +71,17 @@ export default function HomePage() {
         type: rel.type
       }
     }));
+
     setNodes(prevNodes => {
       const mergedNodes = [...prevNodes];
-      newNodes.forEach((newNode: any) => { // Explicitly type newNode
+      newNodes.forEach((newNode: Node<HistoricalNodeData>) => {
         if (!mergedNodes.some(n => n.id === newNode.id)) {
           mergedNodes.push(newNode);
         }
       });
       return mergedNodes;
     });
+
     setEdges(prevEdges => {
       const mergedEdges = [...prevEdges];
       newEdges.forEach(newEdge => {
@@ -89,20 +91,21 @@ export default function HomePage() {
       });
       return mergedEdges;
     });
-
   }, [nodes]);
 
   return (
-    <div className="flex h-screen overflow-hidden"> {/* Remove padding, ensure no overflow */}
+    <div className="flex h-screen overflow-hidden">
       <Toaster />
       <div className="w-1/4 min-w-[300px] max-w-md border-r border-gray-200 overflow-auto bg-gray-50">
-        {/* Analysis section takes up 1/4 of the space with min/max constraints */}
         <div className="p-4">
           <Analysis onAnalysisComplete={handleAnalysisComplete} />
         </div>
       </div>
-      <div className="flex-1 relative"> {/* Flow section takes remaining space */}
-        <Flow initialNodes={nodes} initialEdges={edges} />
+      <div className="flex-1 relative">
+        <Flow 
+          initialNodes={nodes} 
+          initialEdges={edges}
+        />
       </div>
     </div>
   );
