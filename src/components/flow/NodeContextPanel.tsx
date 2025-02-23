@@ -16,26 +16,36 @@ interface NodeContextPanelProps {
 }
 
 async function generateNodeContext(nodeData: HistoricalNodeData) {
-  // Invoke the "analyze-node" function using the Supabase client
-  const { data, error } = await supabase.functions.invoke("analyze-node", {
-    body: {
-      label: nodeData.label,
-      type: nodeData.type,
-      description: nodeData.description,
-    },
-  });
+  try {
+    // Invoke the "analyze-node" function using Supabase Functions API.
+    const { data, error, status, statusText } = await supabase.functions.invoke("analyze-node", {
+      body: {
+        label: nodeData.label,
+        type: nodeData.type,
+        description: nodeData.description,
+      },
+    });
 
-  if (error) {
+    // If there's an error, log it and throw.
+    if (error) {
+      console.error("Error from supabase function:", error);
+      throw new Error(error.message || "Failed to analyze node");
+    }
+
+    // Log the raw data for debugging.
+    console.log("Supabase function response data:", data, { status, statusText });
+
+    // Check that the returned data contains a "context" property.
+    if (!data || !data.context) {
+      console.error("Unexpected response from analyze-node:", { data, status, statusText });
+      throw new Error("Invalid response from analyze-node function");
+    }
+
+    return data.context;
+  } catch (error) {
     console.error("Error generating context:", error);
-    throw new Error(error.message || "Failed to analyze node");
+    throw error;
   }
-
-  if (!data || !data.context) {
-    console.error("Unexpected response structure:", data);
-    throw new Error("Invalid response from analyze-node function");
-  }
-
-  return data.context;
 }
 
 export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
