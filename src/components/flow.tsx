@@ -62,7 +62,7 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
   const [useAutoLayout, setUseAutoLayout] = useState(false);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
 
-  const { setViewport } = useReactFlow();
+  const { setViewport, getZoom, getViewport } = useReactFlow();
 
   useEffect(() => {
     setNodes(initialNodes);
@@ -165,6 +165,117 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
     setNodes(newNodes);
   }, [nodes, edges]);
 
+  const detectLayoutOrientation = useCallback(() => {
+    if (nodes.length < 2) return 'vertical';
+    
+    let maxHorizontalDist = 0;
+    let maxVerticalDist = 0;
+    
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const horizontalDist = Math.abs(nodes[i].position.x - nodes[j].position.x);
+        const verticalDist = Math.abs(nodes[i].position.y - nodes[j].position.y);
+        maxHorizontalDist = Math.max(maxHorizontalDist, horizontalDist);
+        maxVerticalDist = Math.max(maxVerticalDist, verticalDist);
+      }
+    }
+    
+    return maxHorizontalDist > maxVerticalDist ? 'horizontal' : 'vertical';
+  }, [nodes]);
+
+  const downloadAsPDF = useCallback(() => {
+    if (nodes.length === 0) {
+      toast.error('No nodes to export');
+      return;
+    }
+
+    const flowElement = document.querySelector('.react-flow') as HTMLElement;
+    if (!flowElement) {
+      toast.error('Could not find flow element');
+      return;
+    }
+
+    const flowWrapper = flowElement.querySelector('.react-flow__viewport') as HTMLElement || flowElement;
+    const nodesBounds = getNodesBounds(nodes);
+    const orientation = detectLayoutOrientation();
+    
+    // Calculate optimal dimensions based on orientation
+    const padding = 50;
+    let width = nodesBounds.width + padding * 2;
+    let height = nodesBounds.height + padding * 2;
+    
+    // Adjust dimensions based on orientation for better fit
+    if (orientation === 'horizontal') {
+      if (width / height > 2) { // If too wide
+        height = Math.max(height, width / 2); // Increase height to maintain better aspect ratio
+      }
+    } else {
+      if (height / width > 2) { // If too tall
+        width = Math.max(width, height / 2); // Increase width to maintain better aspect ratio
+      }
+    }
+
+    // Store original styles
+    const originalStyle = {
+      width: flowWrapper.style.width,
+      height: flowWrapper.style.height,
+      transform: flowWrapper.style.transform,
+    };
+
+    // Calculate optimal zoom
+    const optimalZoom = Math.min(
+      (width - padding * 2) / nodesBounds.width,
+      (height - padding * 2) / nodesBounds.height
+    );
+
+    // Apply optimal dimensions and transformation
+    flowWrapper.style.width = `${width}px`;
+    flowWrapper.style.height = `${height}px`;
+    flowWrapper.style.transform = `translate(${padding}px, ${padding}px) scale(${optimalZoom})`;
+
+    toast.promise(
+      new Promise((resolve, reject) => {
+        requestAnimationFrame(() => {
+          toPng(flowWrapper, {
+            backgroundColor: '#ffffff',
+            width,
+            height,
+            style: {
+              width: `${width}px`,
+              height: `${height}px`,
+            },
+          })
+            .then((dataUrl) => {
+              const pdf = new jsPDF({
+                orientation: orientation === 'horizontal' ? 'landscape' : 'portrait',
+                unit: 'px',
+                format: [width, height],
+              });
+
+              pdf.addImage(dataUrl, 'PNG', 0, 0, width, height);
+              pdf.save('historical-flow.pdf');
+              resolve('PDF generated successfully');
+            })
+            .catch((error) => {
+              console.error('Failed to generate PDF:', error);
+              reject(new Error('Failed to generate PDF'));
+            })
+            .finally(() => {
+              // Restore original settings
+              flowWrapper.style.width = originalStyle.width;
+              flowWrapper.style.height = originalStyle.height;
+              flowWrapper.style.transform = originalStyle.transform;
+            });
+        });
+      }),
+      {
+        loading: 'Generating PDF...',
+        success: 'PDF downloaded successfully',
+        error: 'Failed to generate PDF',
+      }
+    );
+  }, [nodes, detectLayoutOrientation]);
+
   if (!isMounted) return null;
 
   return (
@@ -188,7 +299,7 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
         <div className="absolute left-0 top-0 z-10 p-4">
           <LeftPanel
             onFitView={fitView}
-            onDownloadPDF={() => {}}
+            onDownloadPDF={downloadAsPDF}
             onAddNode={() => {}}
             onAnalyzeText={async () => {}}
             onAutoLayout={autoLayoutNodes}

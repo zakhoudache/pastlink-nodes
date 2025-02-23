@@ -1,3 +1,4 @@
+
 import React, { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -5,11 +6,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { useHighlightStore } from "../utils/highlightStore";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import RelationshipsTable from '../components/RelationshipsTable';
 import { EdgeDialog } from '../components/EdgeDialog';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Relationship {
     source: string;
@@ -26,22 +30,20 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [temperature, setTemperature] = useState([0.7]);
     const [autoHighlight, setAutoHighlight] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const { addHighlight } = useHighlightStore();
     const [relationships, setRelationships] = useState<Relationship[]>([]);
     const [isEdgeDialogOpen, setIsEdgeDialogOpen] = useState(false);
     const [currentRelationship, setCurrentRelationship] = useState<{ source: string; target: string } | null>(null);
 
-    // Function to handle relationship editing from the table
     const handleEditRelationship = useCallback((relationship: Relationship, index: number) => {
         setCurrentRelationship(relationship);
         setIsEdgeDialogOpen(true);
     }, []);
 
-    // Function to update the relationship list when the EdgeDialog is confirmed
     const handleEdgeComplete = useCallback((newType: string, customLabel?: string) => {
         if (!currentRelationship) return;
 
-        // Find the index of the relationship to update
         const indexToUpdate = relationships.findIndex(rel =>
             rel.source === currentRelationship.source && rel.target === currentRelationship.target
         );
@@ -51,7 +53,6 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
             return;
         }
 
-        // Create a new relationships array with the updated relationship
         const updatedRelationships = [...relationships];
         updatedRelationships[indexToUpdate] = {
             ...updatedRelationships[indexToUpdate],
@@ -59,43 +60,42 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
         };
 
         setRelationships(updatedRelationships);
-        onAnalysisComplete?.(updatedRelationships); // Notify parent of the changes
+        onAnalysisComplete?.(updatedRelationships);
         setIsEdgeDialogOpen(false);
         setCurrentRelationship(null);
     }, [relationships, currentRelationship, onAnalysisComplete]);
 
-
-    // الدالة المسؤولة عن تحليل النص واستلام الاستجابة من API
     const analyzeText = useCallback(async () => {
-        if (!text.trim()) {
+        const trimmedText = text.trim();
+        if (!trimmedText) {
             toast.error("Please enter some text to analyze");
             return;
         }
 
         setIsLoading(true);
+        setError(null);
+
         try {
-            console.log("Triggering Supabase analyze-text function with:", {
-                text: text.substring(0, 100) + "...", // تسجيل أول 100 حرف فقط للتبسيط
-                temperature: temperature[0],
+            console.log("Analyzing text:", { 
+                textLength: trimmedText.length,
+                temperature: temperature[0] 
             });
 
             const { data, error } = await supabase.functions.invoke("analyze-text", {
                 body: {
-                    text,
+                    text: trimmedText,
                     temperature: temperature[0]
                 },
             });
 
             if (error) throw error;
 
-            console.log("Received response from analyze-text:", data);
+            console.log("Analysis response:", data);
 
-            // التحقق من صحة الاستجابة مع التأكد من وجود مصفوفة relationships
             if (!data || !Array.isArray(data.relationships)) {
                 throw new Error("Invalid response format from API");
             }
 
-            // تحويل بيانات العلاقات الواردة إلى التنسيق المطلوب
             const formattedRelationships: Relationship[] = data.relationships.map((rel: any) => ({
                 source: rel.source,
                 target: rel.target,
@@ -104,22 +104,24 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
 
             console.log("Formatted relationships:", formattedRelationships);
 
-            // تعيين العلاقات إلى الحالة بحيث تُستخدم لاحقًا في جدول العلاقات
             setRelationships(formattedRelationships);
             onAnalysisComplete?.(formattedRelationships);
 
-            // تمييز الكيانات في النص تلقائيًا إذا كان الخيار مفعلاً
             if (autoHighlight) {
+                const processedEntities = new Set();
                 formattedRelationships.forEach((rel) => {
                     [rel.source, rel.target].forEach((entity) => {
-                        const startIndex = text.indexOf(entity);
-                        if (startIndex !== -1) {
-                            addHighlight({
-                                id: `highlight-${Date.now()}-${Math.random()}`,
-                                text: entity,
-                                from: startIndex,
-                                to: startIndex + entity.length,
-                            });
+                        if (!processedEntities.has(entity)) {
+                            const startIndex = text.indexOf(entity);
+                            if (startIndex !== -1) {
+                                addHighlight({
+                                    id: `highlight-${Date.now()}-${Math.random()}`,
+                                    text: entity,
+                                    from: startIndex,
+                                    to: startIndex + entity.length,
+                                });
+                                processedEntities.add(entity);
+                            }
                         }
                     });
                 });
@@ -128,7 +130,9 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
             toast.success("Analysis complete!");
         } catch (error: any) {
             console.error("Analysis error:", error);
-            toast.error(error.message || "Failed to analyze text");
+            const errorMessage = error.message || "Failed to analyze text";
+            setError(errorMessage);
+            toast.error(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -136,47 +140,73 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
 
     return (
         <div className="space-y-6">
-            <div className="grid gap-4">
-                <div className="space-y-2">
-                    <Label>Historical Text</Label>
-                    <Textarea
-                        placeholder="Enter historical text to analyze..."
-                        value={text}
-                        onChange={(e) => setText(e.target.value)}
-                        className="h-[200px]"
-                    />
+            <Card className="p-4">
+                <div className="grid gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="historical-text">Historical Text</Label>
+                        <Textarea
+                            id="historical-text"
+                            dir="rtl"
+                            placeholder="Enter historical text to analyze..."
+                            value={text}
+                            onChange={(e) => setText(e.target.value)}
+                            className="h-[200px] font-arabic"
+                            disabled={isLoading}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <Label>Temperature: {temperature[0]}</Label>
+                            <span className="text-sm text-gray-500">
+                                Higher = more creative, Lower = more focused
+                            </span>
+                        </div>
+                        <Slider
+                            value={temperature}
+                            onValueChange={setTemperature}
+                            max={1}
+                            step={0.1}
+                            disabled={isLoading}
+                            className="w-full"
+                        />
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                        <Switch
+                            id="auto-highlight"
+                            checked={autoHighlight}
+                            onCheckedChange={setAutoHighlight}
+                            disabled={isLoading}
+                        />
+                        <Label htmlFor="auto-highlight">Auto-highlight detected entities</Label>
+                    </div>
+
+                    <Button
+                        onClick={analyzeText}
+                        disabled={isLoading || !text.trim()}
+                        className="w-full md:w-auto"
+                    >
+                        {isLoading ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Analyzing...
+                            </>
+                        ) : (
+                            "Analyze Text"
+                        )}
+                    </Button>
                 </div>
+            </Card>
 
-                <div className="space-y-2">
-                    <Label>Temperature: {temperature}</Label>
-                    <Slider
-                        value={temperature}
-                        onValueChange={setTemperature}
-                        max={1}
-                        step={0.1}
-                        className="w-[200px]"
-                    />
-                </div>
+            {error && (
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
 
-                <div className="flex items-center space-x-2">
-                    <Switch
-                        id="auto-highlight"
-                        checked={autoHighlight}
-                        onCheckedChange={setAutoHighlight}
-                    />
-                    <Label htmlFor="auto-highlight">Auto-highlight entities</Label>
-                </div>
-
-                <Button
-                    onClick={analyzeText}
-                    disabled={isLoading}
-                    className="w-full md:w-auto"
-                >
-                    {isLoading ? "Analyzing..." : "Analyze Text"}
-                </Button>
-            </div>
-
-            <div className="border rounded-lg p-4 space-y-4">
+            <Card className="p-4 space-y-4">
                 <h2 className="text-lg font-semibold">Relationship Analysis</h2>
                 {isLoading ? (
                     <div className="space-y-2">
@@ -184,10 +214,10 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
                         <Skeleton className="h-8 w-full" />
                         <Skeleton className="h-8 w-full" />
                     </div>
-                ) : (
+                ) : relationships.length > 0 ? (
                     <RelationshipsTable
                         relationships={relationships}
-                        onEdit={(rel, index) => handleEditRelationship(rel, index)}
+                        onEdit={handleEditRelationship}
                         onDelete={(index) => {
                             const newRelationships = [...relationships];
                             newRelationships.splice(index, 1);
@@ -195,8 +225,12 @@ export default function Analysis({ onAnalysisComplete }: AnalysisProps) {
                             onAnalysisComplete?.(newRelationships);
                         }}
                     />
+                ) : (
+                    <div className="text-center text-gray-500 py-4">
+                        No relationships detected yet. Enter some text and click "Analyze Text" to begin.
+                    </div>
                 )}
-            </div>
+            </Card>
 
             {currentRelationship && (
                 <EdgeDialog
