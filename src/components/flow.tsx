@@ -28,6 +28,7 @@ import { EdgeDialog } from './EdgeDialog';
 import { getNodePosition, getNodesBounds } from '../utils/flowUtils';
 import { LeftPanel } from './flow/LeftPanel';
 import { RightPanel, Highlight } from './flow/RightPanel';
+import { NodeContextPanel } from './flow/NodeContextPanel';
 import dagre from 'dagre';
 
 const edgeTypes: EdgeTypes = {
@@ -61,8 +62,9 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
   const [edgeTargetNode, setEdgeTargetNode] = useState<string | null>(null);
   const [useAutoLayout, setUseAutoLayout] = useState(false);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [selectedNode, setSelectedNode] = useState<{ id: string; data: HistoricalNodeData } | null>(null);
 
-  const { setViewport, getZoom, getViewport } = useReactFlow();
+  const { setViewport, getZoom } = useReactFlow();
 
   useEffect(() => {
     setNodes(initialNodes);
@@ -90,6 +92,18 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
     window.addEventListener('updateNodeData', handleNodeUpdate);
     return () => window.removeEventListener('updateNodeData', handleNodeUpdate);
   }, [nodes]);
+
+  useEffect(() => {
+    const handleCloseContext = () => {
+      setSelectedNode(null);
+    };
+    window.addEventListener('closeNodeContext', handleCloseContext);
+    return () => window.removeEventListener('closeNodeContext', handleCloseContext);
+  }, []);
+
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node<HistoricalNodeData>) => {
+    setSelectedNode({ id: node.id, data: node.data });
+  }, []);
 
   const fitView = useCallback(() => {
     if (nodes.length === 0) return;
@@ -127,7 +141,6 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
     }
   }, []);
 
-  // Auto layout function
   const autoLayoutNodes = useCallback(() => {
     const g = new dagre.graphlib.Graph();
     g.setGraph({ rankdir: 'TB', nodesep: 100, ranksep: 100 });
@@ -199,36 +212,31 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
     const nodesBounds = getNodesBounds(nodes);
     const orientation = detectLayoutOrientation();
     
-    // Calculate optimal dimensions based on orientation
     const padding = 50;
     let width = nodesBounds.width + padding * 2;
     let height = nodesBounds.height + padding * 2;
     
-    // Adjust dimensions based on orientation for better fit
     if (orientation === 'horizontal') {
-      if (width / height > 2) { // If too wide
-        height = Math.max(height, width / 2); // Increase height to maintain better aspect ratio
+      if (width / height > 2) {
+        height = Math.max(height, width / 2);
       }
     } else {
-      if (height / width > 2) { // If too tall
-        width = Math.max(width, height / 2); // Increase width to maintain better aspect ratio
+      if (height / width > 2) {
+        width = Math.max(width, height / 2);
       }
     }
 
-    // Store original styles
     const originalStyle = {
       width: flowWrapper.style.width,
       height: flowWrapper.style.height,
       transform: flowWrapper.style.transform,
     };
 
-    // Calculate optimal zoom
     const optimalZoom = Math.min(
       (width - padding * 2) / nodesBounds.width,
       (height - padding * 2) / nodesBounds.height
     );
 
-    // Apply optimal dimensions and transformation
     flowWrapper.style.width = `${width}px`;
     flowWrapper.style.height = `${height}px`;
     flowWrapper.style.transform = `translate(${padding}px, ${padding}px) scale(${optimalZoom})`;
@@ -261,7 +269,6 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
               reject(new Error('Failed to generate PDF'));
             })
             .finally(() => {
-              // Restore original settings
               flowWrapper.style.width = originalStyle.width;
               flowWrapper.style.height = originalStyle.height;
               flowWrapper.style.transform = originalStyle.transform;
@@ -289,6 +296,7 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
+        onNodeClick={onNodeClick}
         fitView
         minZoom={0.1}
         maxZoom={4}
@@ -321,6 +329,12 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
         onConfirm={() => {}}
         defaultType="related-to"
       />
+
+      {selectedNode && (
+        <div className="fixed right-0 top-0 h-full w-80 z-50 bg-background border-l shadow-lg">
+          <NodeContextPanel selectedNode={selectedNode} />
+        </div>
+      )}
     </div>
   );
 };
