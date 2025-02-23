@@ -16,17 +16,12 @@ interface NodeContextPanelProps {
 }
 
 async function generateNodeContext(nodeData: HistoricalNodeData) {
-  // Construct a trimmed text payload from the node details.
-  const trimmedText = `${nodeData.label} (${nodeData.type})\n${nodeData.description || 'No description provided.'}`.trim();
-
-  // Define a temperature value (using the first element of an array for this example).
-  const temperature = [0.7];
-
-  // Invoke the "analyze-node" function using Supabase Functions API.
+  // Call the "analyze-node" edge function with the node data.
   const { data, error } = await supabase.functions.invoke("analyze-node", {
     body: {
-      text: trimmedText,
-      temperature: temperature[0],
+      label: nodeData.label,
+      type: nodeData.type,
+      description: nodeData.description,
     },
   });
 
@@ -35,7 +30,7 @@ async function generateNodeContext(nodeData: HistoricalNodeData) {
     throw new Error(error.message || "Failed to analyze node");
   }
 
-  // Assumes your function returns an object with a 'context' property.
+  // Assumes the function returns an object with a 'context' property.
   return data.context;
 }
 
