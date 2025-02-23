@@ -6,6 +6,7 @@ import { Sidebar, SidebarContent, SidebarHeader, SidebarProvider } from '@/compo
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import type { HistoricalNodeData } from '../HistoricalNode';
+import { supabase } from '@/lib/supabaseClient'; // Adjust the import path as needed
 
 interface NodeContextPanelProps {
   selectedNode: {
@@ -15,29 +16,27 @@ interface NodeContextPanelProps {
 }
 
 async function generateNodeContext(nodeData: HistoricalNodeData) {
-  try {
-    const response = await fetch(`https://uimmjzuqdqxfqoikcexf.supabase.co/functions/v1/analyze-node`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        label: nodeData.label,
-        type: nodeData.type,
-        description: nodeData.description,
-      }),
-    });
+  // Construct a trimmed text payload from the node details.
+  const trimmedText = `${nodeData.label} (${nodeData.type})\n${nodeData.description || 'No description provided.'}`.trim();
 
-    if (!response.ok) {
-      throw new Error('Failed to analyze node');
-    }
+  // Define a temperature value (using the first element of an array for this example).
+  const temperature = [0.7];
 
-    const data = await response.json();
-    return data.context;
-  } catch (error) {
-    console.error('Error generating context:', error);
-    throw error;
+  // Invoke the "analyze-node" function using Supabase Functions API.
+  const { data, error } = await supabase.functions.invoke("analyze-node", {
+    body: {
+      text: trimmedText,
+      temperature: temperature[0],
+    },
+  });
+
+  if (error) {
+    console.error("Error generating context:", error);
+    throw new Error(error.message || "Failed to analyze node");
   }
+
+  // Assumes your function returns an object with a 'context' property.
+  return data.context;
 }
 
 export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
@@ -74,7 +73,9 @@ export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
                 <Skeleton className="h-4 w-2/3" />
               </div>
             ) : error ? (
-              <div className="text-red-500">Failed to load context. Please try again later.</div>
+              <div className="text-red-500">
+                Failed to load context. Please try again later.
+              </div>
             ) : (
               <div className="prose prose-sm max-w-none">{context}</div>
             )}
