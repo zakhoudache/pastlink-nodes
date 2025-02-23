@@ -9,20 +9,19 @@ export interface Highlight {
 
 export interface RightPanelProps {
   highlights: Highlight[];
-  onCreateNodeFromHighlight: (highlight: { id: string; text: string }, type: NodeType) => void;
+  onCreateNodeFromHighlight: (highlight: Highlight, type: string) => void; // Changed type
 }
 
 export function RightPanel({ highlights, onCreateNodeFromHighlight }: RightPanelProps) {
-  // Maintain a mapping from highlight id to a selected node type.
   const [selectedTypes, setSelectedTypes] = useState<Record<string, NodeType>>({});
 
-  // When highlights update, initialize new entries with the default type.
   useEffect(() => {
+    // Initialize selected types based on incoming highlights
     setSelectedTypes((prev) => {
       const newSelectedTypes: Record<string, NodeType> = { ...prev };
       highlights.forEach((highlight) => {
         if (!newSelectedTypes[highlight.id]) {
-          newSelectedTypes[highlight.id] = 'event';
+          newSelectedTypes[highlight.id] = 'event'; // Default type
         }
       });
       return newSelectedTypes;
@@ -38,20 +37,30 @@ export function RightPanel({ highlights, onCreateNodeFromHighlight }: RightPanel
 
   const handleCreateNode = (highlight: Highlight) => {
     const type = selectedTypes[highlight.id] || 'event';
-    onCreateNodeFromHighlight({ id: highlight.id, text: highlight.text }, type);
+    onCreateNodeFromHighlight(highlight, type); // Call with Highlight object and string type
   };
 
   return (
-    <aside className="fixed right-0 top-0 h-full w-64 p-4 z-50 bg-[#102239e6] overflow-y-auto">
-      <h2 className="text-lg font-semibold mb-4 text-white overlay-progress-text">Highlights</h2>
+    <aside
+      className="
+        w-64
+        p-4
+        bg-white
+        border-l border-gray-300
+        shadow-lg
+        overflow-y-auto
+      "
+    >
+      <h2 className="text-lg font-semibold mb-4">Highlights</h2>
+
       {highlights.length === 0 ? (
-        <p className="text-white">No highlights available.</p>
+        <p>No highlights available.</p>
       ) : (
         <ul>
           {highlights.map((highlight) => (
             <li key={highlight.id} className="mb-4">
               <div className="flex flex-col space-y-2">
-                <span className="text-sm font-medium text-white">{highlight.text}</span>
+                <span className="text-sm font-medium">{highlight.text}</span>
                 <div className="flex items-center justify-between">
                   <select
                     value={selectedTypes[highlight.id] || 'event'}
@@ -78,6 +87,7 @@ export function RightPanel({ highlights, onCreateNodeFromHighlight }: RightPanel
                       </option>
                     ))}
                   </select>
+
                   <button
                     onClick={() => handleCreateNode(highlight)}
                     className="ml-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-700 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
