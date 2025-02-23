@@ -93,14 +93,15 @@ export default function HomePage() {
   }, [nodes]);
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen"> {/* Use flex for layout */}
+    <div className="flex h-screen overflow-hidden"> {/* Remove padding, ensure no overflow */}
       <Toaster />
-      <div className="lg:w-1/2 p-4 border-r border-gray-200 overflow-auto">
-        {/* Analysis section takes up half the space */}
-        <Analysis onAnalysisComplete={handleAnalysisComplete} />
+      <div className="w-1/4 min-w-[300px] max-w-md border-r border-gray-200 overflow-auto bg-gray-50">
+        {/* Analysis section takes up 1/4 of the space with min/max constraints */}
+        <div className="p-4">
+          <Analysis onAnalysisComplete={handleAnalysisComplete} />
+        </div>
       </div>
-      <div className="lg:w-1/2 h-full">
-        {/* Flow section takes up the other half and fills height */}
+      <div className="flex-1 relative"> {/* Flow section takes remaining space */}
         <Flow initialNodes={nodes} initialEdges={edges} />
       </div>
     </div>

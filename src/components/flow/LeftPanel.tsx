@@ -26,9 +26,9 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   additionalButtons,
 }) => {
   const [text, setText] = useState('');
-  const [width, setWidth] = useState(300); // Initial width
-  const [height, setHeight] = useState(500); // Initial height
-  const [position, setPosition] = useState({ x: 20, y: 20 }); // Initial position
+  const [width, setWidth] = useState(250); // Reduced initial width
+  const [height, setHeight] = useState(400); // Reduced initial height
+  const [position, setPosition] = useState({ x: 10, y: 10 }); // Adjusted initial position
 
   const handleAnalyze = () => {
     if (text.trim()) {
@@ -53,30 +53,23 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       onStop={handleDragStop}
     >
       <div style={{ position: 'absolute', zIndex: 1000 }}>
-        {/* This header serves as the drag handle */}
         <div
-          className="drag-handle"
-          style={{
-            cursor: 'move',
-            background: '#f0f0f0',
-            padding: '8px 12px',
-            borderBottom: '1px solid #ccc',
-          }}
+          className="drag-handle bg-gray-100 px-3 py-2 text-sm font-medium border-b border-gray-200 cursor-move"
         >
           Drag Me
         </div>
         <Resizable
-          defaultSize={{
+          size={{
             width: width,
             height: height,
           }}
           minWidth={200}
           minHeight={300}
-          maxWidth={500}
-          maxHeight={800}
+          maxWidth={400}
+          maxHeight={600}
           onResize={handleResize}
           onResizeStop={handleResize}
-          enableResizing={{
+          enable={{
             top: false,
             right: true,
             bottom: true,
@@ -160,8 +153,8 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
               </div>
             </div>
 
-            <div className="rounded-lg bg-white p-4 shadow-lg">
-              <h3 className="mb-2 font-medium">Analyze Text</h3>
+            <div className="space-y-2">
+              <h3 className="font-medium">Analyze Text</h3>
               <Textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
