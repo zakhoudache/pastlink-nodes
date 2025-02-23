@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { NodeType } from '../HistoricalNode';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,6 +29,9 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   const [height, setHeight] = useState(400);
   const [position, setPosition] = useState({ x: 10, y: 10 });
 
+  // Create a ref to attach to the draggable element
+  const dragRef = useRef<HTMLDivElement>(null);
+
   const handleAnalyze = () => {
     if (text.trim()) {
       onAnalyzeText(text);
@@ -47,11 +50,12 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
 
   return (
     <Draggable
+      nodeRef={dragRef}
       handle=".drag-handle"
       defaultPosition={{ x: position.x, y: position.y }}
       onStop={handleDragStop}
     >
-      <div style={{ position: 'absolute', zIndex: 1000 }}>
+      <div ref={dragRef} style={{ position: 'absolute', zIndex: 1000 }}>
         <div className="drag-handle bg-gray-100 px-3 py-2 text-sm font-medium border-b border-gray-200 cursor-move">
           Drag Me
         </div>
