@@ -6,6 +6,7 @@ import { Sidebar, SidebarContent, SidebarHeader, SidebarProvider } from '@/compo
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import type { HistoricalNodeData } from '../HistoricalNode';
+import { supabase } from "@/integrations/supabase/client";
 
 interface NodeContextPanelProps {
   selectedNode: {
@@ -15,29 +16,26 @@ interface NodeContextPanelProps {
 }
 
 async function generateNodeContext(nodeData: HistoricalNodeData) {
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/analyze-node`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        label: nodeData.label,
-        type: nodeData.type,
-        description: nodeData.description,
-      }),
-    });
+  // Invoke the "analyze-node" function using the Supabase client
+  const { data, error } = await supabase.functions.invoke("analyze-node", {
+    body: {
+      label: nodeData.label,
+      type: nodeData.type,
+      description: nodeData.description,
+    },
+  });
 
-    if (!response.ok) {
-      throw new Error('Failed to analyze node');
-    }
-
-    const data = await response.json();
-    return data.context;
-  } catch (error) {
-    console.error('Error generating context:', error);
-    throw error;
+  if (error) {
+    console.error("Error generating context:", error);
+    throw new Error(error.message || "Failed to analyze node");
   }
+
+  if (!data || !data.context) {
+    console.error("Unexpected response structure:", data);
+    throw new Error("Invalid response from analyze-node function");
+  }
+
+  return data.context;
 }
 
 export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
