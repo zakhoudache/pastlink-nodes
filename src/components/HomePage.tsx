@@ -1,3 +1,4 @@
+
 // src/components/HomePage.tsx
 import React, { useState, useCallback, useEffect } from 'react';
 import { Node, Edge } from '@xyflow/react';
@@ -90,8 +91,6 @@ export default function HomePage() {
     });
 
   }, [nodes]);
-
-
 
   return (
     <div className="flex flex-col lg:flex-row h-screen"> {/* Use flex for layout */}
