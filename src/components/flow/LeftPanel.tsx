@@ -58,7 +58,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
       <div ref={dragRef} style={{
       position: 'absolute',
       zIndex: 1000
-    }}>
+    }} className="py-0 my-0">
         <div className="drag-handle bg-gray-100 px-3 py-2 text-sm font-medium border-b border-gray-200 cursor-move">
           Drag Me
         </div>
@@ -78,7 +78,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
           <div style={{
           width: '100%',
           height: '100%'
-        }} className="rounded-lg bg-white p-4 shadow-lg py-[16px]">
+        }} className="rounded-lg bg-white p-4 shadow-lg py-[17px]">
             <div className="mb-4 space-y-2">
               <Button onClick={onFitView} variant="outline" className="w-full">
                 Fit View
