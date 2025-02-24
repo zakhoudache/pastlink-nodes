@@ -4,11 +4,11 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
-  Sidebar, 
-  SidebarContent, 
-  SidebarHeader, 
-  SidebarProvider 
-} from '@/components/ui/sidebar';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import type { HistoricalNodeData } from '../HistoricalNode';
@@ -57,47 +57,34 @@ export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
   }
 
   return (
-    <div className="fixed right-0 top-0 h-full w-80">
-      <SidebarProvider defaultOpen>
-        <div className="flex w-full h-full">
-          <Sidebar className="w-full" variant="floating">
-            <SidebarHeader className="border-b border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">
-                    {selectedNode.data.type === 'person' ? '👤' : '📝'}
-                  </span>
-                  <h2 className="text-lg font-semibold">{selectedNode.data.label}</h2>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => window.dispatchEvent(new CustomEvent('closeNodeContext'))}
-                >
-                  ✕
-                </Button>
+    <Sheet defaultOpen>
+      <SheetContent side="right" className="w-[320px]">
+        <SheetHeader className="border-b border-gray-200 pb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">
+              {selectedNode.data.type === 'person' ? '👤' : '📝'}
+            </span>
+            <SheetTitle>{selectedNode.data.label}</SheetTitle>
+          </div>
+        </SheetHeader>
+        <div className="mt-4">
+          <ScrollArea className="h-[calc(100vh-120px)]">
+            {isLoading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
               </div>
-            </SidebarHeader>
-            <SidebarContent className="p-4">
-              <ScrollArea className="h-[calc(100vh-120px)]">
-                {isLoading ? (
-                  <div className="space-y-4">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-2/3" />
-                  </div>
-                ) : error ? (
-                  <div className="text-red-500">
-                    Failed to load context. Please try again later.
-                  </div>
-                ) : (
-                  <div className="prose prose-sm max-w-none">{context}</div>
-                )}
-              </ScrollArea>
-            </SidebarContent>
-          </Sidebar>
+            ) : error ? (
+              <div className="text-red-500">
+                Failed to load context. Please try again later.
+              </div>
+            ) : (
+              <div className="prose prose-sm max-w-none">{context}</div>
+            )}
+          </ScrollArea>
         </div>
-      </SidebarProvider>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 }
