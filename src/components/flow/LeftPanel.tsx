@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { NodeType } from '../HistoricalNode';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ export interface LeftPanelProps {
   onAddNode: (type: NodeType) => void;
   onAnalyzeText: (text: string) => Promise<void>;
   onAutoLayout: () => void;
+  onMixedLayout: () => void;
   distributeNodesEvenly: () => void;
   additionalButtons?: { label: string; onClick: () => void }[];
 }
@@ -21,6 +23,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   onAddNode,
   onAnalyzeText,
   onAutoLayout,
+  onMixedLayout,
   distributeNodesEvenly,
   additionalButtons,
 }) => {
@@ -28,8 +31,6 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
   const [width, setWidth] = useState(250);
   const [height, setHeight] = useState(400);
   const [position, setPosition] = useState({ x: 10, y: 10 });
-
-  // Create a ref to attach to the draggable element
   const dragRef = useRef<HTMLDivElement>(null);
 
   const handleAnalyze = () => {
@@ -57,7 +58,7 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
     >
       <div ref={dragRef} style={{ position: 'absolute', zIndex: 1000 }}>
         <div className="drag-handle bg-gray-100 px-3 py-2 text-sm font-medium border-b border-gray-200 cursor-move">
-          Drag Me
+          اسحب للتحريك
         </div>
         <Resizable
           size={{ width, height }}
@@ -81,84 +82,83 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({
           <div className="rounded-lg bg-white p-4 shadow-lg" style={{ width: '100%', height: '100%' }}>
             <div className="mb-4 space-y-2">
               <Button onClick={onFitView} variant="outline" className="w-full">
-                Fit View
+                تكبير/تصغير المخطط
               </Button>
               <Button onClick={onDownloadPDF} variant="outline" className="w-full">
-                Download PDF
+                تحميل PDF
               </Button>
             </div>
 
             <div className="mb-4 space-y-2">
               <Button onClick={onAutoLayout} variant="outline" className="w-full">
-                Auto Layout (Dagre)
+                ترتيب تلقائي
               </Button>
-              <Button onClick={distributeNodesEvenly} variant="outline" className="w-full">
-                Distribute Evenly
+              <Button onClick={onMixedLayout} variant="outline" className="w-full">
+                ترتيب مختلط
               </Button>
-              {additionalButtons &&
-                additionalButtons.map((button, index) => (
-                  <Button key={index} onClick={button.onClick} variant="outline" className="w-full">
-                    {button.label}
-                  </Button>
-                ))}
+              {additionalButtons?.map((button, index) => (
+                <Button key={index} onClick={button.onClick} variant="outline" className="w-full">
+                  {button.label}
+                </Button>
+              ))}
             </div>
 
             <div className="space-y-2">
-              <h3 className="font-medium">Add New Node</h3>
+              <h3 className="font-medium">إضافة عنصر جديد</h3>
               <div className="grid grid-cols-2 gap-1">
                 <Button onClick={() => onAddNode('event')} variant="outline" size="sm">
-                  Event 📅
+                  حدث 📅
                 </Button>
                 <Button onClick={() => onAddNode('person')} variant="outline" size="sm">
-                  Person 👤
+                  شخصية 👤
                 </Button>
                 <Button onClick={() => onAddNode('cause')} variant="outline" size="sm">
-                  Cause ⚡
+                  سبب ⚡
                 </Button>
                 <Button onClick={() => onAddNode('political')} variant="outline" size="sm">
-                  Political 🏛️
+                  سياسي 🏛️
                 </Button>
                 <Button onClick={() => onAddNode('economic')} variant="outline" size="sm">
-                  Economic 💰
+                  اقتصادي 💰
                 </Button>
                 <Button onClick={() => onAddNode('social')} variant="outline" size="sm">
-                  Social 👥
+                  اجتماعي 👥
                 </Button>
                 <Button onClick={() => onAddNode('cultural')} variant="outline" size="sm">
-                  Cultural 🎭
+                  ثقافي 🎭
                 </Button>
                 <Button onClick={() => onAddNode('term')} variant="outline" size="sm">
-                  Term 📖
+                  مصطلح 📖
                 </Button>
                 <Button onClick={() => onAddNode('date')} variant="outline" size="sm">
-                  Date ⏰
+                  تاريخ ⏰
                 </Button>
                 <Button onClick={() => onAddNode('goal')} variant="outline" size="sm">
-                  Goal 🎯
+                  هدف 🎯
                 </Button>
                 <Button onClick={() => onAddNode('indicator')} variant="outline" size="sm">
-                  Indicator 📊
+                  مؤشر 📊
                 </Button>
                 <Button onClick={() => onAddNode('country')} variant="outline" size="sm">
-                  Country 🌍
+                  دولة 🌍
                 </Button>
                 <Button onClick={() => onAddNode('other')} variant="outline" size="sm">
-                  Other ❔
+                  آخر ❔
                 </Button>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <h3 className="font-medium">Analyze Text</h3>
+            <div className="space-y-2 mt-4">
+              <h3 className="font-medium">تحليل النص</h3>
               <Textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Enter text here for analysis..."
+                placeholder="أدخل النص للتحليل..."
                 className="mb-2"
                 dir="rtl"
               />
               <Button onClick={handleAnalyze} className="w-full" disabled={!text.trim()}>
-                Analyze
+                تحليل
               </Button>
             </div>
           </div>
