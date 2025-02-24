@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -45,6 +44,22 @@ async function generateNodeContext(nodeData: HistoricalNodeData) {
   return data.context;
 }
 
+const typeIcons: Record<string, string> = {
+  event: '📅',
+  person: '👤',
+  cause: '⚡',
+  political: '🏛️',
+  economic: '💰',
+  social: '👥',
+  cultural: '🎭',
+  term: '📖',
+  date: '⏰',
+  goal: '🎯',
+  indicator: '📊',
+  country: '🌍',
+  other: '❔',
+};
+
 export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
   const { data: context, isLoading, error } = useQuery({
     queryKey: ['nodeContext', selectedNode?.id],
@@ -52,6 +67,7 @@ export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
     enabled: !!selectedNode,
   });
 
+  // If there's no selected node, return null to hide the sidebar
   if (!selectedNode) {
     return null;
   }
@@ -62,7 +78,7 @@ export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
         <SheetHeader className="border-b border-gray-200 pb-4">
           <div className="flex items-center gap-2">
             <span className="text-xl">
-              {selectedNode.data.type === 'person' ? '👤' : '📝'}
+              {selectedNode.data.type === 'person' ? '👤' : typeIcons[selectedNode.data.type]}
             </span>
             <SheetTitle>{selectedNode.data.label}</SheetTitle>
           </div>
