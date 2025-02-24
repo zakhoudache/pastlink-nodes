@@ -16,6 +16,23 @@ import { useQuery } from '@tanstack/react-query';
 import type { HistoricalNodeData } from '../HistoricalNode';
 import { supabase } from "@/integrations/supabase/client";
 
+// Import typeIcons from HistoricalNode
+const typeIcons: Record<string, string> = {
+  event: '📅',
+  person: '👤',
+  cause: '⚡',
+  political: '🏛️',
+  economic: '💰',
+  social: '👥',
+  cultural: '🎭',
+  term: '📖',
+  date: '⏰',
+  goal: '🎯',
+  indicator: '📊',
+  country: '🌍',
+  other: '❔',
+};
+
 interface NodeContextPanelProps {
   selectedNode: {
     id: string;
@@ -58,6 +75,8 @@ export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
     return null;
   }
 
+  const nodeIcon = typeIcons[selectedNode.data.type] || typeIcons.other;
+
   return (
     <Sheet defaultOpen>
       <SheetContent side="right" className="w-[320px] pr-10">
@@ -68,7 +87,7 @@ export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
         <SheetHeader className="border-b border-gray-200 pb-4 pr-6">
           <div className="flex items-center gap-2">
             <span className="text-xl">
-              {selectedNode.data.type === 'person' ? '👤' : typeIcons[selectedNode.data.type]}
+              {nodeIcon}
             </span>
             <SheetTitle>{selectedNode.data.label}</SheetTitle>
           </div>
