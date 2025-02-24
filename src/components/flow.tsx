@@ -92,38 +92,6 @@ const distributeNodes = (nodes: Node[], edges: Edge[], direction: 'horizontal' |
   });
 };
 
-const distributeNodesMixed = (nodes: Node[], edges: Edge[]) => {
-  const g = new dagre.graphlib.Graph();
-  g.setGraph({
-    nodesep: 100,
-    ranksep: 100,
-    rankdir: Math.random() > 0.5 ? 'LR' : 'TB',
-    align: 'DR',
-  });
-  g.setDefaultEdgeLabel(() => ({}));
-
-  nodes.forEach((node) => {
-    g.setNode(node.id, { width: 180, height: 100 });
-  });
-
-  edges.forEach((edge) => {
-    g.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(g);
-
-  return nodes.map((node) => {
-    const nodeWithPosition = g.node(node.id);
-    return {
-      ...node,
-      position: {
-        x: nodeWithPosition.x - 90,
-        y: nodeWithPosition.y - 50,
-      },
-    };
-  });
-};
-
 const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
   const [isMounted, setIsMounted] = useState(false);
   const [nodes, setNodes] = useState<Node<HistoricalNodeData>[]>(initialNodes);
@@ -354,21 +322,10 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
     );
   }, [nodes, detectLayoutOrientation]);
 
-  const handleAutoLayout = useCallback((layoutType: 'dagre' | 'mixed' = 'dagre') => {
-    const newNodes = layoutType === 'mixed' 
-      ? distributeNodesMixed(nodes, edges)
-      : distributeNodes(nodes, edges);
-    
-    setNodes(newNodes);
-    setTimeout(() => {
-      fitView();
-    }, 50);
-  }, [nodes, edges, fitView]);
-
   if (!isMounted) return null;
 
   return (
-    <div className="h-full w-full relative" dir="rtl">
+    <div className="h-full w-full relative">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -386,15 +343,14 @@ const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
         <Background />
         <Controls />
         
-        <div className="absolute right-0 top-0 z-10 p-4">
+        <div className="absolute left-0 top-0 z-10 p-4">
           <LeftPanel
             onFitView={fitView}
             onDownloadPDF={downloadAsPDF}
             onAddNode={() => {}}
             onAnalyzeText={async () => {}}
-            onAutoLayout={() => handleAutoLayout('dagre')}
-            onMixedLayout={() => handleAutoLayout('mixed')}
-            distributeNodesEvenly={() => handleAutoLayout('dagre')}
+            onAutoLayout={autoLayoutNodes}
+            distributeNodesEvenly={() => {}}
           />
         </div>
         
