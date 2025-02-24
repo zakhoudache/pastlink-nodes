@@ -7,7 +7,6 @@ export interface HistoricalEdgeData {
   target: string;
   type: string;
   customLabel?: string;
-  [key: string]: unknown;
 }
 
 export function HistoricalEdge({
@@ -31,7 +30,8 @@ export function HistoricalEdge({
     targetPosition,
   });
 
-  const edgeLabel = data?.customLabel || data?.type || 'connected';
+  const edgeData = data as HistoricalEdgeData;
+  const edgeLabel = edgeData?.customLabel || edgeData?.type || 'connected';
 
   return (
     <>

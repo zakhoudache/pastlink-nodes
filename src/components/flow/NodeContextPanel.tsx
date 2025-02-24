@@ -3,7 +3,12 @@ import React from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sidebar, SidebarContent, SidebarHeader } from '@/components/ui/sidebar';
+import { 
+  Sidebar, 
+  SidebarContent, 
+  SidebarHeader, 
+  SidebarProvider 
+} from '@/components/ui/sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import type { HistoricalNodeData } from '../HistoricalNode';
@@ -52,43 +57,47 @@ export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
   }
 
   return (
-    <div className="fixed right-0 top-0 h-full w-80 bg-background border-l shadow-lg">
-      <Sidebar>
-        <SidebarHeader className="border-b border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">
-                {selectedNode.data.type === 'person' ? '👤' : '📝'}
-              </span>
-              <h2 className="text-lg font-semibold">{selectedNode.data.label}</h2>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => window.dispatchEvent(new CustomEvent('closeNodeContext'))}
-            >
-              ✕
-            </Button>
-          </div>
-        </SidebarHeader>
-        <SidebarContent className="p-4">
-          <ScrollArea className="h-[calc(100vh-120px)]">
-            {isLoading ? (
-              <div className="space-y-4">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-2/3" />
+    <div className="fixed right-0 top-0 h-full w-80">
+      <SidebarProvider defaultOpen>
+        <div className="flex w-full h-full">
+          <Sidebar className="w-full" variant="floating">
+            <SidebarHeader className="border-b border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">
+                    {selectedNode.data.type === 'person' ? '👤' : '📝'}
+                  </span>
+                  <h2 className="text-lg font-semibold">{selectedNode.data.label}</h2>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.dispatchEvent(new CustomEvent('closeNodeContext'))}
+                >
+                  ✕
+                </Button>
               </div>
-            ) : error ? (
-              <div className="text-red-500">
-                Failed to load context. Please try again later.
-              </div>
-            ) : (
-              <div className="prose prose-sm max-w-none">{context}</div>
-            )}
-          </ScrollArea>
-        </SidebarContent>
-      </Sidebar>
+            </SidebarHeader>
+            <SidebarContent className="p-4">
+              <ScrollArea className="h-[calc(100vh-120px)]">
+                {isLoading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                  </div>
+                ) : error ? (
+                  <div className="text-red-500">
+                    Failed to load context. Please try again later.
+                  </div>
+                ) : (
+                  <div className="prose prose-sm max-w-none">{context}</div>
+                )}
+              </ScrollArea>
+            </SidebarContent>
+          </Sidebar>
+        </div>
+      </SidebarProvider>
     </div>
   );
 }
