@@ -53,6 +53,45 @@ interface FlowProps {
   initialEdges: Edge<HistoricalEdgeData>[];
 }
 
+const distributeNodes = (nodes: Node[], edges: Edge[], direction: 'horizontal' | 'vertical' = 'horizontal') => {
+  const nodeWidth = 180;
+  const nodeHeight = 100;
+  const gapX = 100;
+  const gapY = 100;
+  const startX = 50;
+  const startY = 50;
+
+  // Create a graph representation using dagre
+  const g = new dagre.graphlib.Graph();
+  g.setGraph({ rankdir: direction === 'horizontal' ? 'LR' : 'TB' });
+  g.setDefaultEdgeLabel(() => ({}));
+
+  // Add nodes to the graph
+  nodes.forEach((node) => {
+    g.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  });
+
+  // Add edges to the graph
+  edges.forEach((edge) => {
+    g.setEdge(edge.source, edge.target);
+  });
+
+  // Apply the layout
+  dagre.layout(g);
+
+  // Return the nodes with their new positions
+  return nodes.map((node) => {
+    const nodeWithPosition = g.node(node.id);
+    return {
+      ...node,
+      position: {
+        x: nodeWithPosition.x - nodeWidth / 2 + startX,
+        y: nodeWithPosition.y - nodeHeight / 2 + startY,
+      },
+    };
+  });
+};
+
 const FlowContent: React.FC<FlowProps> = ({ initialNodes, initialEdges }) => {
   const [isMounted, setIsMounted] = useState(false);
   const [nodes, setNodes] = useState<Node<HistoricalNodeData>[]>(initialNodes);

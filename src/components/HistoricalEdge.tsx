@@ -1,7 +1,10 @@
 
 import { BaseEdge, EdgeLabelRenderer, EdgeProps, getBezierPath } from '@xyflow/react';
 
-export interface HistoricalEdgeData {
+export interface HistoricalEdgeData extends Record<string, unknown> {
+  id: string;
+  source: string;
+  target: string;
   type: string;
   customLabel?: string;
 }
@@ -17,7 +20,7 @@ export function HistoricalEdge({
   style = {},
   markerEnd,
   data,
-}: EdgeProps<HistoricalEdgeData>) {
+}: EdgeProps<any>) {
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,

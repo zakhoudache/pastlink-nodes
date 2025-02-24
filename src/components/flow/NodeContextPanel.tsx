@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -7,8 +8,10 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetClose,
 } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
+import { X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import type { HistoricalNodeData } from '../HistoricalNode';
 import { supabase } from "@/integrations/supabase/client";
@@ -44,22 +47,6 @@ async function generateNodeContext(nodeData: HistoricalNodeData) {
   return data.context;
 }
 
-const typeIcons: Record<string, string> = {
-  event: '📅',
-  person: '👤',
-  cause: '⚡',
-  political: '🏛️',
-  economic: '💰',
-  social: '👥',
-  cultural: '🎭',
-  term: '📖',
-  date: '⏰',
-  goal: '🎯',
-  indicator: '📊',
-  country: '🌍',
-  other: '❔',
-};
-
 export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
   const { data: context, isLoading, error } = useQuery({
     queryKey: ['nodeContext', selectedNode?.id],
@@ -67,15 +54,18 @@ export function NodeContextPanel({ selectedNode }: NodeContextPanelProps) {
     enabled: !!selectedNode,
   });
 
-  // If there's no selected node, return null to hide the sidebar
   if (!selectedNode) {
     return null;
   }
 
   return (
     <Sheet defaultOpen>
-      <SheetContent side="right" className="w-[320px]">
-        <SheetHeader className="border-b border-gray-200 pb-4">
+      <SheetContent side="right" className="w-[320px] pr-10">
+        <SheetClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </SheetClose>
+        <SheetHeader className="border-b border-gray-200 pb-4 pr-6">
           <div className="flex items-center gap-2">
             <span className="text-xl">
               {selectedNode.data.type === 'person' ? '👤' : typeIcons[selectedNode.data.type]}
