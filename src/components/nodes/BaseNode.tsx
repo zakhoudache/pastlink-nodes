@@ -1,4 +1,3 @@
-
 import { Handle, Position } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -14,6 +13,7 @@ import { NodeData } from "@/lib/types";
 interface BaseNodeProps {
   data: NodeData;
   selected?: boolean;
+  isConnectable: boolean;
 }
 
 const nodeConfig = {
@@ -56,7 +56,7 @@ const nodeConfig = {
   },
 };
 
-export default function BaseNode({ data, selected }: BaseNodeProps) {
+export default function BaseNode({ data, selected, isConnectable }: BaseNodeProps) {
   const config = nodeConfig[data.type as keyof typeof nodeConfig] || nodeConfig.concept;
   const Icon = config.icon;
 
@@ -74,7 +74,12 @@ export default function BaseNode({ data, selected }: BaseNodeProps) {
             )}
             animate={config.animation}
           >
-            <Handle type="target" position={Position.Top} className="w-2 h-2" />
+            <Handle
+              type="target"
+              position={Position.Top}
+              className="w-2 h-2"
+              isConnectable={isConnectable}
+            />
             <div className="flex items-center gap-3">
               {data.imageUrl ? (
                 <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm">
@@ -102,6 +107,7 @@ export default function BaseNode({ data, selected }: BaseNodeProps) {
               type="source"
               position={Position.Bottom}
               className="w-2 h-2"
+              isConnectable={isConnectable}
             />
           </motion.div>
         </TooltipTrigger>
