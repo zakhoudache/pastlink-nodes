@@ -32,8 +32,27 @@ const getEdgeStyle = (type: EdgeType) => {
   return styles[type] || { stroke: "#64748b", strokeWidth: 2 };
 };
 
+// Assuming this is your useResizeObserver hook (simplified for example)
 const useResizeObserver = (ref: React.RefObject<HTMLDivElement>) => {
-  // ... keep existing code
+  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null); // Initial value
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      if (entries.length > 0) {
+        const { width, height } = entries[0].contentRect;
+        setDimensions({ width, height });
+      }
+    });
+
+    resizeObserver.observe(element);
+
+    return () => resizeObserver.disconnect();
+  }, [ref]);
+
+  return dimensions;
 };
 
 function hasType(data: any): data is { type: string } {
@@ -67,7 +86,7 @@ const GraphDisplay = () => {
   );
 
   useEffect(() => {
-    if (dimensions.width > 0 && dimensions.height > 0) {
+    if (dimensions?.width && dimensions?.width > 0 && dimensions?.height && dimensions?.height > 0) {
       if (
         !containerDimensions ||
         dimensions.width !== containerDimensions.width ||
