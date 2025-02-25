@@ -1,4 +1,3 @@
-// src/components/EntityDetailsSidebar.tsx
 import React from "react";
 import { Card } from "./ui/card";
 import { ScrollArea } from "./ui/scroll-area";
@@ -7,9 +6,10 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { X, Edit, Trash2 } from "lucide-react";
 import { useGraph } from "@/context/GraphContext";
+import { NodeData } from "@/lib/types";
 
 const EntityDetailsSidebar = () => {
-  const { selectedNode, selectNode, removeNode, edges } = useGraph();
+  const { selectedNode, selectNode, removeNode, nodes, edges } = useGraph();
 
   if (!selectedNode) {
     return null;
@@ -29,7 +29,7 @@ const EntityDetailsSidebar = () => {
       return {
         id: edge.id,
         type: isSource ? edge.label : `is ${edge.label} of`,
-        connectedTo: connectedNode?.label || "Unknown",
+        connectedTo: connectedNode?.data.label || "Unknown",
       };
     });
 
@@ -80,7 +80,6 @@ const EntityDetailsSidebar = () => {
 
           <div>
             <h3 className="text-sm font-medium mb-2">Connections</h3>
-            // src/components/EntityDetailsSidebar.tsx (continued)
             <h3 className="text-sm font-medium mb-2">Connections</h3>
             {connections.length > 0 ? (
               <div className="space-y-2">

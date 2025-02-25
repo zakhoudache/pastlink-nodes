@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
 import { ArrowRight, X, AlertCircle } from "lucide-react";
 import { useGraph } from "@/context/GraphContext";
-import { Entity } from "@/lib/types";
+import { Entity, NodeType } from "@/lib/types";
 import { Alert, AlertDescription } from "./ui/alert";
 
 const TextAnalysisPanel = () => {
@@ -57,20 +57,21 @@ const TextAnalysisPanel = () => {
     setEntities(entities.filter((entity) => entity.id !== id));
   };
 
-  const getEntityColor = (type: Entity["type"]) => {
-    switch (type) {
-      case "person":
-        return "bg-blue-100 text-blue-800 border-blue-300";
-      case "event":
-        return "bg-red-100 text-red-800 border-red-300";
-      case "place":
-        return "bg-green-100 text-green-800 border-green-300";
-      case "organization":
-        return "bg-yellow-100 text-yellow-800 border-yellow-300";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-300";
-    }
-  };
+// Update the type check in TextAnalysisPanel
+const getEntityColor = (type: NodeType) => {
+  switch (type) {
+    case "person":
+      return "bg-blue-100 text-blue-800 border-blue-300";
+    case "event":
+      return "bg-red-100 text-red-800 border-red-300";
+    case "place":
+      return "bg-green-100 text-green-800 border-green-300";
+    case "concept":
+      return "bg-yellow-100 text-yellow-800 border-yellow-300";
+    default:
+      return "bg-gray-100 text-gray-800 border-gray-300";
+  }
+};
 
   return (
     <Card className="h-full w-[400px] bg-white flex flex-col p-4 border-r">

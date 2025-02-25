@@ -1,5 +1,6 @@
+
 // src/lib/types.ts
-export type NodeType = "person" | "place" | "event" | "concept";
+export type NodeType = "person" | "place" | "event" | "concept" | "cause" | "political" | "economic" | "social" | "cultural" | "term" | "date" | "goal" | "indicator" | "country" | "other";
 export type EdgeType = "causes" | "influences" | "participates" | "located";
 
 export interface NodeData {
@@ -9,6 +10,8 @@ export interface NodeData {
   subtitle?: string;
   imageUrl?: string;
   description?: string;
+  position?: { x: number; y: number };
+  context?: string;
 }
 
 export interface EdgeData {
@@ -25,4 +28,12 @@ export interface Entity {
   text: string;
   startIndex: number;
   endIndex: number;
+  context?: string;
 }
+
+export interface HistoricalNodeData extends NodeData {
+  type: NodeType;
+  label: string;
+  description?: string;
+}
+

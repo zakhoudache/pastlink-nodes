@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useEffect, useState } from "react";
-import ReactFlow, {
+import {
   Background,
   Controls,
   MiniMap,
@@ -8,7 +8,7 @@ import ReactFlow, {
   Connection,
   ConnectionMode,
   ReactFlowInstance,
-} from "reactflow";
+} from '@xyflow/react';
 import "reactflow/dist/style.css";
 import BaseNode from "./nodes/BaseNode";
 import { useGraph, EdgeType } from "@/context/GraphContext";
