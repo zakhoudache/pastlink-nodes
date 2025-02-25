@@ -329,8 +329,7 @@ export function GraphProvider({ children }: { children: ReactNode }) {
     setSelectedEdge(edge);
     setSelectedNode(null);
   }, []);
-
-  const onNodesChangeHandler = useCallback(
+ const onNodesChangeHandler = useCallback(
     (changes: NodeChange[]) => {
       setNodes((prevNodes) => {
         const updatedNodes = applyNodeChanges(changes, prevNodes);
@@ -339,17 +338,6 @@ export function GraphProvider({ children }: { children: ReactNode }) {
     },
     []
   );
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (nodes.length > 0) {
-        setTimeout(() => {
-          window.dispatchEvent(new Event("resize"));
-        }, 100);
-      }
-    };
-    handleResize();
-  }, [nodes]);
 
   return (
     <GraphContext.Provider
@@ -378,7 +366,7 @@ export function GraphProvider({ children }: { children: ReactNode }) {
         setDefaultEdgeType,
         analyzeText,
         convertEntitiesToNodes,
-        onNodesChangeHandler // Add this
+        onNodesChangeHandler
       }}
     >
       {children}
