@@ -101,7 +101,7 @@ serve(async (req) => {
         // Sanitize input (example, adjust based on expected content)
         const sanitizedText = text.replace(/</g, "<").replace(/>/g, ">"); // Prevent basic HTML injection
 
-        const apiKey = Deno.env.get("GOOGLE_GENAI_API_KEY");
+        const apiKey = "AIzaSyADyF440_9myFUo5yBobAg_lEgjT5zIIUI";
         if (!apiKey) {
             throw new Error('API key not configured (environment variable GOOGLE_GENAI_API_KEY)');
         }
