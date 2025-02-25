@@ -178,27 +178,48 @@ export type { EdgeType, NodeData };
           setLoading(true);
           setError(null);
   
-          const { data, error } = await supabase.functions.invoke(
+          const { data, error: functionError } = await supabase.functions.invoke(
             "analyze-text",
             {
               body: { text },
             },
           );
   
-          if (error) {
-            console.error("Supabase function error:", error);
-            setError(error.message);
-            throw new Error(error.message);
+          if (functionError) {
+            console.error("Supabase function error:", functionError);
+            setError(functionError.message);
+            throw functionError;
           }
   
-          const newEntities = data?.entities || [];
-          console.log("Extracted entities:", newEntities);
+          const { entities, relationships } = data;
+          console.log("Extracted entities:", entities);
+          console.log("Extracted relationships:", relationships);
   
-          // Ensure all entities have valid IDs
-          const validatedEntities = newEntities.map((entity) => ({
+          // Process entities
+          const validatedEntities = entities.map((entity: Entity) => ({
             ...entity,
             id: entity.id || uuidv4(),
           }));
+  
+          // Convert entities to nodes
+          const newNodes = arrangeNodes(validatedEntities);
+          setNodes(prevNodes => [...prevNodes, ...newNodes]);
+  
+          // Process relationships into edges
+          if (relationships && relationships.length > 0) {
+            const newEdges = relationships.map((rel: any) => ({
+              id: `e${uuidv4()}`,
+              source: rel.source,
+              target: rel.target,
+              label: rel.description || rel.type,
+              type: rel.type,
+              data: {
+                type: rel.type,
+                description: rel.description,
+              },
+            }));
+            setEdges(prevEdges => [...prevEdges, ...newEdges]);
+          }
   
           setEntities(validatedEntities);
           return validatedEntities;
@@ -214,7 +235,7 @@ export type { EdgeType, NodeData };
           setLoading(false);
         }
       },
-      [supabase],
+      [supabase, arrangeNodes],
     );
   
     const addNode = useCallback(

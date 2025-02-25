@@ -1,5 +1,4 @@
 
-// src/lib/types.ts
 import { Edge, Node } from '@xyflow/react';
 
 export type NodeType = "person" | "place" | "event" | "concept" | "cause" | "political" | "economic" | "social" | "cultural" | "term" | "date" | "goal" | "indicator" | "country" | "other";
@@ -18,7 +17,7 @@ export interface Position {
   y: number;
 }
 
-export interface NodeData extends Record<string, unknown> {
+export interface NodeData {
   label: string;
   type: NodeType;
   description?: string;
@@ -28,9 +27,13 @@ export interface NodeData extends Record<string, unknown> {
   subtitle?: string;
 }
 
-export interface EdgeData extends Record<string, unknown> {
+export interface EdgeData {
+  id: string;
+  source: string;
+  target: string;
   label: string;
   type: EdgeType;
+  description?: string;
 }
 
 export interface Entity {
@@ -40,6 +43,13 @@ export interface Entity {
   startIndex: number;
   endIndex: number;
   context?: string;
+}
+
+export interface Relationship {
+  source: string;
+  target: string;
+  type: EdgeType;
+  description?: string;
 }
 
 export type CustomNode = Node<NodeData>;
