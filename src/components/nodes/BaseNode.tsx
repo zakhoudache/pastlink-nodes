@@ -14,6 +14,8 @@ interface BaseNodeProps {
   data: NodeData;
   selected?: boolean;
   isConnectable: boolean;
+  // plus any additional props passed from React Flow
+  [key: string]: any;
 }
 
 const nodeConfig = {
@@ -56,7 +58,7 @@ const nodeConfig = {
   },
 };
 
-export default function BaseNode({ data, selected, isConnectable }: BaseNodeProps) {
+export default function BaseNode({ data, selected, isConnectable, ...rest }: BaseNodeProps) {
   const config = nodeConfig[data.type as keyof typeof nodeConfig] || nodeConfig.concept;
   const Icon = config.icon;
 
@@ -65,6 +67,7 @@ export default function BaseNode({ data, selected, isConnectable }: BaseNodeProp
       <Tooltip>
         <TooltipTrigger asChild>
           <motion.div
+            {...rest} // Forward the rest of the props from React Flow here!
             className={cn(
               "min-w-[180px] min-h-[90px] border-2 shadow-lg p-4 transition-shadow bg-gradient-to-br",
               config.gradient,
