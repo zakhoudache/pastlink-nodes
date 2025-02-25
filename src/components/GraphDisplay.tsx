@@ -1,5 +1,7 @@
+
 import React, { useCallback, useRef, useEffect, useState } from "react";
 import {
+  ReactFlow,
   Background,
   Controls,
   MiniMap,
@@ -8,11 +10,13 @@ import {
   Connection,
   ConnectionMode,
   ReactFlowInstance,
+  BackgroundVariant
 } from '@xyflow/react';
-import "reactflow/dist/style.css";
+import "@xyflow/react/dist/style.css";
 import BaseNode from "./nodes/BaseNode";
 import { useGraph, EdgeType } from "@/context/GraphContext";
 import { debounce } from "lodash";
+import { NodeData } from "@/lib/types";
 
 const nodeTypes = {
   custom: BaseNode,
@@ -102,11 +106,11 @@ const GraphDisplay = () => {
   ]);
 
   // Map context nodes/edges to ReactFlow format
-  const flowNodes: Node[] = nodes.map((node) => ({
+  const flowNodes: Node<NodeData>[] = nodes.map((node) => ({
     id: node.id,
     type: "custom",
     position: node.position,
-    data: node.data, // Ensure this is node.data, not node
+    data: node.data,
   }));
 
   const flowEdges: Edge[] = edges.map((edge) => ({
@@ -120,8 +124,8 @@ const GraphDisplay = () => {
   }));
 
   const handleNodeClick = useCallback(
-    (_: React.MouseEvent, node: Node) => {
-      selectNode(node); // Pass the full node object
+    (_: React.MouseEvent, node: Node<NodeData>) => {
+      selectNode(node);
     },
     [selectNode],
   );
@@ -170,7 +174,7 @@ const GraphDisplay = () => {
         fitView
         attributionPosition="bottom-right"
       >
-        <Background />
+        <Background variant={BackgroundVariant.Dots} />
         <Controls />
         <MiniMap
           nodeColor={(node) => {
