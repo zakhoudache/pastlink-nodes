@@ -41,7 +41,7 @@ serve(async (req) => {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `Analyze the following text and extract both entities (people, places, events, concepts) and relationships between them. Format the response as JSON with two arrays: "entities" and "relationships".
 
