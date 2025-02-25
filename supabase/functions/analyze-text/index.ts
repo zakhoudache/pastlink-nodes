@@ -35,7 +35,7 @@ serve(async (req) => {
       throw new Error('No text provided');
     }
 
-    const apiKey = Deno.env.get('GEMINI_API_KEY');
+    const apiKey = "AIzaSyA1V7Klm9lyEPtw6PViEeeTPoCTwwJQt5E";
     if (!apiKey) {
       throw new Error('API key not configured');
     }
