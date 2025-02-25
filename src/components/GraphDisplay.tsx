@@ -33,26 +33,7 @@ const getEdgeStyle = (type: EdgeType) => {
 };
 
 const useResizeObserver = (ref: React.RefObject<HTMLDivElement>) => {
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const observerRef = useRef<ResizeObserver | null>(null);
-
-  useEffect(() => {
-    if (!ref.current) return;
-
-    const handleResize = (entries: ResizeObserverEntry[]) => {
-      const { width, height } = entries[0].contentRect;
-      setDimensions({ width, height });
-    };
-
-    observerRef.current = new ResizeObserver(handleResize);
-    observerRef.current.observe(ref.current);
-
-    return () => {
-      observerRef.current?.disconnect();
-    };
-  }, [ref]);
-
-  return dimensions;
+  // ... keep existing code
 };
 
 function hasType(data: any): data is { type: string } {
@@ -69,6 +50,7 @@ const GraphDisplay = () => {
     setContainerDimensions,
     containerDimensions,
     defaultEdgeType,
+    onNodesChangeHandler,
   } = useGraph();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -111,6 +93,7 @@ const GraphDisplay = () => {
     type: "custom",
     position: node.position || { x: 0, y: 0 },
     data: node.data,
+    draggable: true, // Explicitly enable dragging
   }));
 
   const flowEdges = edges.map((edge) => ({
@@ -170,7 +153,10 @@ const GraphDisplay = () => {
         onNodeClick={handleNodeClick}
         onEdgeClick={handleEdgeClick}
         onConnect={onConnect}
+        onNodesChange={onNodesChangeHandler}
         nodeTypes={nodeTypes}
+        nodesDraggable={true}
+        connectOnClick={false}
         connectionMode={ConnectionMode.Loose}
         onInit={onInit}
         fitView
@@ -200,4 +186,3 @@ const GraphDisplay = () => {
 };
 
 export default GraphDisplay;
-
