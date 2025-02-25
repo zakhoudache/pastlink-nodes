@@ -40,16 +40,18 @@ async function analyzeTextWithRetry(
 
 يجب أن يحتوي JSON على مصفوفتين: "entities" و "relationships".
 
-بالنسبة للكيانات، قم بتضمين:
- text (the entity name)
+For entities, include:
+- text (the entity name)
 - type (person, place, event, or concept)
 - context (brief description or context)
 
-بالنسبة للعلاقات، قم بتضمين:
+For relationships, include:
 - source (entity text)
 - target (entity text)
 - type (causes, influences, participates, or located)
 - description (brief description of the relationship)
+
+
 
 النص المراد تحليله: ${text}`;
 
