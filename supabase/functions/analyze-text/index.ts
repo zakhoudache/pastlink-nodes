@@ -35,23 +35,23 @@ async function analyzeTextWithRetry(
 ) {
   const modelName = Deno.env.get("GOOGLE_GENAI_MODEL_NAME") || "gemini-1.5-flash";
   const model = genAI.getGenerativeModel({ model: modelName });
-  const prompt = `You are an expert in analyzing text and extracting entities and relationships.
-Analyze the following text and extract both entities (people, places, events, concepts) and relationships between them. Format the response as valid JSON. Do NOT include any text outside of the JSON object. Do NOT include any markdown formatting or code fences.
+  const prompt = `أنت خبير في تحليل النصوص واستخراج الكيانات والعلاقات.
+حلل النص التالي واستخرج الكيانات (الأشخاص والأماكن والأحداث والمفاهيم) والعلاقات بينها. قم بتنسيق الاستجابة كـ JSON صالح. لا تقم بتضمين أي نص خارج كائن JSON. لا تقم بتضمين أي تنسيق Markdown أو حواجز التعليمات البرمجية.
 
-The JSON should have two arrays: "entities" and "relationships".
+يجب أن يحتوي JSON على مصفوفتين: "entities" و "relationships".
 
-For entities, include:
-- text (the entity name)
-- type (person, place, event, or concept)
-- context (brief description or context)
+بالنسبة للكيانات، قم بتضمين:
+- النص (اسم الكيان)
+- النوع (شخص، مكان، حدث، أو مفهوم)
+- السياق (وصف موجز أو سياق)
 
-For relationships, include:
-- source (entity text)
-- target (entity text)
-- type (causes, influences, participates, or located)
-- description (brief description of the relationship)
+بالنسبة للعلاقات، قم بتضمين:
+- المصدر (نص الكيان)
+- الهدف (نص الكيان)
+- النوع (الأسباب، التأثيرات، المشاركات، أو الموقع)
+- الوصف (وصف موجز للعلاقة)
 
-Text to analyze: ${text}`;
+النص المراد تحليله: ${text}`;
 
   let attempts = 0;
 
@@ -109,7 +109,7 @@ serve(async (req) => {
     }
 
     // Sanitize input (example, adjust based on expected content)
-    const sanitizedText = text.replace(/</g, "&lt;").replace(/>/g, "&gt;"); // Prevent basic HTML injection
+    const sanitizedText = text.replace(/</g, "<").replace(/>/g, ">"); // Prevent basic HTML injection
 
     const apiKey = "AIzaSyADyF440_9myFUo5yBobAg_lEgjT5zIIUI";
     if (!apiKey) {
