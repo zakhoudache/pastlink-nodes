@@ -3,14 +3,16 @@
 export type NodeType = "person" | "place" | "event" | "concept" | "cause" | "political" | "economic" | "social" | "cultural" | "term" | "date" | "goal" | "indicator" | "country" | "other";
 export type EdgeType = "causes" | "influences" | "participates" | "located";
 
+export interface Position {
+  x: number;
+  y: number;
+}
+
 export interface NodeData {
-  id: string;
-  type: NodeType;
   label: string;
-  subtitle?: string;
-  imageUrl?: string;
+  type: NodeType;
   description?: string;
-  position?: { x: number; y: number };
+  position: Position;
   context?: string;
 }
 
@@ -30,10 +32,3 @@ export interface Entity {
   endIndex: number;
   context?: string;
 }
-
-export interface HistoricalNodeData extends NodeData {
-  type: NodeType;
-  label: string;
-  description?: string;
-}
-

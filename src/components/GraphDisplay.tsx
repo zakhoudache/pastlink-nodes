@@ -1,4 +1,3 @@
-
 import React, { useCallback, useRef, useEffect, useState } from "react";
 import {
   ReactFlow,
@@ -10,7 +9,8 @@ import {
   Connection,
   ConnectionMode,
   ReactFlowInstance,
-  BackgroundVariant
+  BackgroundVariant,
+  XYPosition,
 } from '@xyflow/react';
 import "@xyflow/react/dist/style.css";
 import BaseNode from "./nodes/BaseNode";
@@ -109,8 +109,14 @@ const GraphDisplay = () => {
   const flowNodes: Node<NodeData>[] = nodes.map((node) => ({
     id: node.id,
     type: "custom",
-    position: node.position,
-    data: node.data,
+    position: node.position || { x: 0, y: 0 },
+    data: {
+      label: node.data.label,
+      type: node.data.type,
+      description: node.data.description,
+      position: node.position || { x: 0, y: 0 },
+      context: node.data.context,
+    },
   }));
 
   const flowEdges: Edge[] = edges.map((edge) => ({

@@ -1,86 +1,47 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@^0.3.0'
+// Update the return type to match NodeData structure
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { corsHeaders } from '../shared-one/cors.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+interface Entity {
+  id: string;
+  type: string;
+  text: string;
+  startIndex: number;
+  endIndex: number;
+  context?: string;
 }
 
-Deno.serve(async (req) => {
-  // Handle CORS preflight requests
+serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { text, temperature = 0.7 } = await req.json()
-    const apiKey = Deno.env.get('GEMINI_API_KEY')
-    
-    if (!apiKey) {
-      throw new Error('Missing Gemini API key')
-    }
+    const { text } = await req.json();
 
-    // Initialize Gemini
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
+    // Process text and extract entities
+    const entities: Entity[] = []; // Your entity extraction logic here
 
-    // Construct a nicely formatted prompt with proper indentation
-    const prompt = `
-Analyze this historical text and identify relationships between entities.
-Return ONLY a JSON object with this exact format:
+    // Transform entities to match NodeData structure
+    const processedEntities = entities.map(entity => ({
+      id: entity.id,
+      type: entity.type,
+      label: entity.text,
+      context: entity.context,
+      position: { x: 0, y: 0 }, // Initial position
+    }));
 
-{
-  "relationships": [
-    {
-      "source": "entity name",
-      "target": "other entity name",
-      "type": "type of relationship"
-    }
-  ]
-}
-
-Text to analyze:
-${text}
-    `.trim()
-
-    // Optionally pass temperature if supported by the API:
-    // const result = await model.generateContent(prompt, { temperature })
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    const analysisText = await response.text()
-    
-    // Clean the analysis text by removing markdown code fences (if present)
-    let cleanJson = analysisText.replace(/```json\s*/g, '').replace(/```/g, '').trim()
-    
-    try {
-      const parsedAnalysis = JSON.parse(cleanJson)
-      // Log the parsed JSON in a pretty printed format
-      console.log('Successfully parsed analysis:', JSON.stringify(parsedAnalysis, null, 2))
-      
-      if (!Array.isArray(parsedAnalysis.relationships)) {
-        throw new Error('Invalid response format: relationships must be an array')
-      }
-
-      return new Response(
-        JSON.stringify(parsedAnalysis, null, 2),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200 
-        }
-      )
-    } catch (parseError) {
-      console.error('Error parsing analysis JSON:', parseError)
-      console.log('Raw analysis text:', analysisText)
-      throw new Error('Failed to parse analysis results')
-    }
-  } catch (error) {
-    console.error('Error:', error.message)
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
+      JSON.stringify({ entities: processedEntities }),
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
-      }
-    )
+      },
+    );
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
-})
+});

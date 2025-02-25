@@ -1,38 +1,20 @@
 import {
-    createContext,
-    useContext,
-    useState,
-    ReactNode,
-    useCallback,
-    useEffect,
-    useMemo,
-  } from "react";
-  import { v4 as uuidv4 } from "uuid";
-  import { createClient } from "@supabase/supabase-js";
-  import { Node, Edge, Position } from "reactflow";
-  import { Entity } from "@/lib/types"; // Assuming you have a types file
-  
-  export enum EdgeType {
-    CAUSES = "causes",
-    INFLUENCES = "influences",
-    PARTICIPATES = "participates",
-    LOCATED = "located",
-    DEFAULT = "influences",
-  }
-  
-  export type NodeData = {
-    label: string;
-    type: Entity["type"];
-    description?: string;
-    position: { x: number; y: number };
-  };
-  
-  export type EdgeData = {
-    source: string;
-    target: string;
-    type: string;
-    label?: string;
-  };
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+} from "react";
+import { v4 as uuidv4 } from "uuid";
+import { createClient } from "@supabase/supabase-js";
+import { Node, Edge } from '@xyflow/react';
+import { NodeData, NodeType, EdgeType, Entity } from "@/lib/types";
+
+export { EdgeType };
+
+export type { NodeData };
   
   interface GraphContextProps {
     nodes: Node<NodeData>[];
@@ -129,6 +111,11 @@ import {
               label: entity.text,
               type: entity.type,
               description: entity.context,
+              position: {
+                x: col * SPACING + Math.random() * 30 - 15,
+                y: currentRow * SPACING + Math.random() * 30 - 15,
+              },
+              context: entity.context,
             },
           });
   
@@ -380,4 +367,3 @@ import {
     }
     return context;
   }
-  
