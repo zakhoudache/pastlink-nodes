@@ -31,11 +31,9 @@
     "@tanstack/react-router": "^1.15.1",
     "@tanstack/react-router-devtools": "^1.15.1",
     "@uploadthing/react": "^6.2.2",
-    "@tanstack/react-router-devtools": "^1.15.0", // Updated version
-    "@xyflow/react": "^11.10.0", // Updated version
-    "@xyflow/system": "^1.1.0", // Updated version
-    "@xyflow/utils": "^1.0.0", // Updated version
-    
+    "@xyflow/react": "^11.10.0",
+    "@xyflow/system": "^1.1.0",
+    "@xyflow/utils": "^1.0.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "cmdk": "^0.2.0",
