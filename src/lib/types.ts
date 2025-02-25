@@ -1,25 +1,34 @@
 
 // src/lib/types.ts
+import { Edge, Node } from '@xyflow/react';
+
 export type NodeType = "person" | "place" | "event" | "concept" | "cause" | "political" | "economic" | "social" | "cultural" | "term" | "date" | "goal" | "indicator" | "country" | "other";
-export type EdgeType = "causes" | "influences" | "participates" | "located";
+
+export const EdgeTypes = {
+  CAUSES: 'causes',
+  INFLUENCES: 'influences',
+  PARTICIPATES: 'participates',
+  LOCATED: 'located',
+} as const;
+
+export type EdgeType = typeof EdgeTypes[keyof typeof EdgeTypes];
 
 export interface Position {
   x: number;
   y: number;
 }
 
-export interface NodeData {
+export interface NodeData extends Record<string, unknown> {
   label: string;
   type: NodeType;
   description?: string;
   position: Position;
   context?: string;
+  imageUrl?: string;
+  subtitle?: string;
 }
 
-export interface EdgeData {
-  id: string;
-  source: string;
-  target: string;
+export interface EdgeData extends Record<string, unknown> {
   label: string;
   type: EdgeType;
 }
@@ -32,3 +41,6 @@ export interface Entity {
   endIndex: number;
   context?: string;
 }
+
+export type CustomNode = Node<NodeData>;
+export type CustomEdge = Edge<EdgeData>;

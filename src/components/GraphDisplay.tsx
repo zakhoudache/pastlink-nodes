@@ -14,9 +14,9 @@ import {
 } from '@xyflow/react';
 import "@xyflow/react/dist/style.css";
 import BaseNode from "./nodes/BaseNode";
-import { useGraph, EdgeType } from "@/context/GraphContext";
+import { useGraph } from "@/context/GraphContext";
 import { debounce } from "lodash";
-import { NodeData } from "@/lib/types";
+import { NodeData, EdgeTypes, EdgeType } from "@/lib/types";
 
 const nodeTypes = {
   custom: BaseNode,
@@ -24,10 +24,10 @@ const nodeTypes = {
 
 const getEdgeStyle = (type: EdgeType) => {
   const styles = {
-    [EdgeType.CAUSES]: { stroke: "#ef4444", strokeWidth: 2 },
-    [EdgeType.INFLUENCES]: { stroke: "#a855f7", strokeWidth: 2 },
-    [EdgeType.PARTICIPATES]: { stroke: "#3b82f6", strokeWidth: 2 },
-    [EdgeType.LOCATED]: { stroke: "#22c55e", strokeWidth: 2 },
+    [EdgeTypes.CAUSES]: { stroke: "#ef4444", strokeWidth: 2 },
+    [EdgeTypes.INFLUENCES]: { stroke: "#a855f7", strokeWidth: 2 },
+    [EdgeTypes.PARTICIPATES]: { stroke: "#3b82f6", strokeWidth: 2 },
+    [EdgeTypes.LOCATED]: { stroke: "#22c55e", strokeWidth: 2 },
   };
   return styles[type] || { stroke: "#64748b", strokeWidth: 2 };
 };
@@ -106,20 +106,14 @@ const GraphDisplay = () => {
   ]);
 
   // Map context nodes/edges to ReactFlow format
-  const flowNodes: Node<NodeData>[] = nodes.map((node) => ({
+  const flowNodes = nodes.map((node) => ({
     id: node.id,
     type: "custom",
     position: node.position || { x: 0, y: 0 },
-    data: {
-      label: node.data.label,
-      type: node.data.type,
-      description: node.data.description,
-      position: node.position || { x: 0, y: 0 },
-      context: node.data.context,
-    },
+    data: node.data,
   }));
 
-  const flowEdges: Edge[] = edges.map((edge) => ({
+  const flowEdges = edges.map((edge) => ({
     id: edge.id,
     source: edge.source,
     target: edge.target,
@@ -151,12 +145,14 @@ const GraphDisplay = () => {
 
   const onConnect = useCallback(
     (params: Connection) => {
-      addNewEdge({
-        source: params.source!,
-        target: params.target!,
-        label: "New Connection",
-        type: EdgeType.INFLUENCES,
-      });
+      if (params.source && params.target) {
+        addNewEdge({
+          source: params.source,
+          target: params.target,
+          label: "New Connection",
+          type: EdgeTypes.INFLUENCES,
+        });
+      }
     },
     [addNewEdge],
   );

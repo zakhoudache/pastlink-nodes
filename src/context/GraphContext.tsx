@@ -10,11 +10,10 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { createClient } from "@supabase/supabase-js";
 import { Node, Edge } from '@xyflow/react';
-import { NodeData, NodeType, EdgeType, Entity } from "@/lib/types";
+import { NodeData, EdgeData, NodeType, EdgeTypes, EdgeType, Entity } from "@/lib/types";
 
-export { EdgeType };
-
-export type { NodeData };
+export { EdgeTypes };
+export type { EdgeType, NodeData };
   
   interface GraphContextProps {
     nodes: Node<NodeData>[];

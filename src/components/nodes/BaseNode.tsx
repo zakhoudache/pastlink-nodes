@@ -1,5 +1,5 @@
-// src/components/nodes/BaseNode.tsx (remains mostly the same but with updated types)
-import { Handle, Position } from "reactflow";
+
+import { Handle, Position } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Landmark, User, Calendar, Lightbulb } from "lucide-react";
@@ -57,7 +57,7 @@ const nodeConfig = {
 };
 
 export default function BaseNode({ data, selected }: BaseNodeProps) {
-  const config = nodeConfig[data.type];
+  const config = nodeConfig[data.type as keyof typeof nodeConfig] || nodeConfig.concept;
   const Icon = config.icon;
 
   return (
