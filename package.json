@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "build:dev": "vite build --mode development",
+
     "build:supabase": "deno bundle supabase/functions/analyze-text/index.ts supabase/functions/analyze-text/index.cjs",
     "build:app": "tsc && vite build",
     "build": "npm run build:supabase && npm run build:app",
